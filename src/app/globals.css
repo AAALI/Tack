@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Brand tokens — see BRAND.md */
+:root {
+  --ink: #1b1b1f;
+  --paper: #f6f5f2;
+  --surface: #ffffff;
+  --pin: #e14b3b;
+  --slate: #6e6e78;
+  --hairline: #e6e5e1;
+  --wash: #f1efea;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-grotesk), var(--font-sans);
+  --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Display face — wordmark, board name, headings. Tight tracking per BRAND. */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+/* Mono — metadata only (dates, counts, IDs). */
+.font-meta {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.01em;
+}
+
+/* Keyboard focus is the Pin — visible, never on body text colour. */
+:focus-visible {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d6d0;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c5c3bb;
+}
+
+/* The one micro-interaction worth having: the "tack in" settle. */
+@keyframes tack-in {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.tack-in {
+  animation: tack-in var(--tack-motion, 160ms) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

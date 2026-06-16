@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref. Saves Actions minutes and stops
+# flaky concurrent deploys from racing.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: lint · typecheck · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Public env vars get inlined at build time by Next. They aren't secret
+      # (RLS is the security boundary) but the build still expects them.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+        run: npx next build
+
+      # Verify the OpenNext Workers build also succeeds — the deploy path.
+      - name: OpenNext (Cloudflare) build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+        run: npx opennextjs-cloudflare build
+
+  # TODO(v1.0): Re-enable a `db` job once `supabase/config.toml` is committed
+  # (via `supabase init`). For now run RLS tests locally with:
+  #     supabase start && supabase test db
+  # See `supabase/tests/database/rls.test.sql`.
