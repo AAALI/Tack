@@ -14,6 +14,17 @@
   --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Dark mode — driven by data-theme="dark" on <html> */
+[data-theme="dark"] {
+  --ink: #f0ede8;
+  --paper: #141414;
+  --surface: #1e1e20;
+  --pin: #e14b3b;
+  --slate: #9e9ea8;
+  --hairline: #2a2a2e;
+  --wash: #252528;
+}
+
 html,
 body {
   height: 100%;
@@ -55,8 +66,14 @@ body {
   background: #d8d6d0;
   border-radius: 6px;
 }
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3a3a3e;
+}
 ::-webkit-scrollbar-thumb:hover {
   background: #c5c3bb;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #4a4a50;
 }
 
 /* The one micro-interaction worth having: the "tack in" settle. */
@@ -68,6 +85,17 @@ body {
 .tack-in {
   animation: tack-in var(--tack-motion, 160ms) ease-out;
 }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+.fade-up-delay-1 { animation-delay: 0.1s; }
+.fade-up-delay-2 { animation-delay: 0.2s; }
+.fade-up-delay-3 { animation-delay: 0.35s; }
 
 @media (prefers-reduced-motion: reduce) {
   * {

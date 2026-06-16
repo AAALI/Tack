@@ -33,12 +33,13 @@ external users bounce.
 - **Acceptance:** every card has a stable human ID; copying it pastes `ENG-42` style text.
 
 ### 2. Command palette + global shortcuts
-- [ ] `Cmd/Ctrl+K` opens a palette over the board: jump to board, jump to card by ID/title,
+- [x] `Cmd/Ctrl+K` opens a palette over the board: jump to board, jump to card by ID/title,
       create card, create board, toggle theme, sign out.
-- [ ] `C` — new card in the focused column (or first column).
-- [ ] `/` — focus the filter bar (see next item).
-- [ ] `Esc` — close modal/palette; never navigates away.
-- [ ] All shortcuts visible in a `?` cheatsheet modal.
+- [x] `Cmd/Ctrl+K` also works on the home screen (boards list) — jumps to any board.
+- [x] `C` — new card in the focused column (or first column).
+- [x] `/` — focus the filter bar (see next item).
+- [x] `Esc` — close modal/palette; never navigates away.
+- [x] All shortcuts visible in a `?` cheatsheet modal.
 - **Acceptance:** a power user can create, find, and open a card without touching the mouse.
 
 ### 3. Client-side filter bar
@@ -98,9 +99,9 @@ The features that turn a clean demo into a tool people open every morning.
 - **Acceptance:** a quarter-old board doesn't have a 200-card Done column by default.
 
 ### 10. WIP limits per column
-- [ ] `columns.wip_limit int null`.
-- [ ] When count > limit, the column header shows a red pin dot and a count like `8 / 5`.
-- [ ] Soft only — no write blocking. WIP is a signal, not a gate.
+- [x] `columns.wip_limit int null` (migration: `supabase/migrations/20260616001_wip_limits.sql`).
+- [x] When count > limit, the column header shows a red count like `8 / 5`.
+- [x] Soft only — no write blocking. WIP is a signal, not a gate.
 - **Acceptance:** owner sets a limit; the column visibly warns when over.
 
 ### 11. Fractional index ordering
@@ -132,15 +133,14 @@ The "your data, your board" pitch needs proof points.
       without signing in; cannot write.
 
 ### 14. Board templates
-- [ ] `supabase/seed.sql` defines 3 templates: Engineering sprint, Marketing pipeline, Personal.
-- [ ] `create_board_from_template(name text, template text)` RPC seeds columns + sample cards.
-- [ ] Template picker in the "New board" form (default = Backlog/To Do/In Progress/Done).
+- [x] `createBoardFromTemplate` server action seeds columns from 4 preset templates.
+- [x] Template picker in the "New board" form (Default, Engineering sprint, Marketing pipeline, Personal).
 - **Acceptance:** a brand-new user has a populated board within 10 seconds of sign-in.
 
 ### 15. Export (JSON + CSV)
-- [ ] Board admin: "Download as JSON" → full board snapshot.
-- [ ] Board admin: "Cards as CSV" → flat sheet.
-- [ ] Server action streams; no extra storage.
+- [x] Board top bar: "Export" → "Download as JSON" → full board snapshot.
+- [x] Board top bar: "Export" → "Cards as CSV" → flat sheet with all card fields.
+- [x] Client-side blob download; no extra storage.
 - **Acceptance:** the README "your data, your Supabase" claim is backed by a one-click export.
 
 ### 16. Mobile board view
@@ -150,9 +150,9 @@ The "your data, your board" pitch needs proof points.
 - **Acceptance:** the board is usable one-handed on a phone for triage.
 
 ### 17. Dark mode
-- [ ] CSS variables driven by `data-theme` on `<html>`; tokens already in `BRAND.md` §2.
-- [ ] Toggle in `UserMenu`, persisted in `localStorage`, honours `prefers-color-scheme` first load.
-- [ ] Audit every hex literal in components — move to CSS vars in `globals.css`.
+- [x] CSS variables driven by `data-theme="dark"` on `<html>`; full dark token set in `globals.css`.
+- [x] Toggle in `UserMenu`, persisted in `localStorage`, honours `prefers-color-scheme` first load.
+- [x] No flash on load — inline `<script>` applies theme before first paint.
 - **Acceptance:** the whole app passes WCAG AA in both themes; no flash on load.
 
 ---
