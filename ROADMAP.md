@@ -25,11 +25,11 @@ The product as-is is good. These are the gaps that, left in, will make the first
 external users bounce.
 
 ### 1. Card identifiers (`BOARD-123`)
-- [ ] Add `boards.prefix text` (3–6 chars, derived from board name on create, editable by owner).
-- [ ] Add `cards.number int not null` with a per-board sequence via trigger
+- [x] Add `boards.prefix text` (3–6 chars, derived from board name on create, editable by owner).
+- [x] Add `cards.number int not null` with a per-board sequence via trigger
       (`max(number)+1 where board_id = new.board_id`).
-- [ ] Backfill existing cards in a migration.
-- [ ] Render `PREFIX-NUMBER` on the card, in the modal title bar, and in the URL.
+- [x] Backfill existing cards in a migration.
+- [x] Render `PREFIX-NUMBER` on the card, in the modal title bar, and in the URL.
 - **Acceptance:** every card has a stable human ID; copying it pastes `ENG-42` style text.
 
 ### 2. Command palette + global shortcuts
@@ -54,9 +54,9 @@ external users bounce.
 - **Acceptance:** pasting a card URL in Slack opens the right card for any board member.
 
 ### 5. Tighten `profiles_read` to co-members only
-- [ ] Replace the open `profiles_read` policy with a `SECURITY DEFINER` helper:
+- [x] Replace the open `profiles_read` policy with a `SECURITY DEFINER` helper:
       "user X and the viewer share at least one board."
-- [ ] Update `MembersDialog` / assignee picker to use the same helper (they already do via RLS).
+- [x] Update `MembersDialog` / assignee picker to use the same helper (they already do via RLS).
 - **Acceptance:** signed-in user A cannot select user B's profile row when they share no board.
       Existing UI keeps working for legitimate co-members.
 
