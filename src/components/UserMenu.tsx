@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/actions";
 import { tack } from "@/lib/theme";
 import Avatar from "./Avatar";
+import { ThemeToggle } from "./ThemeProvider";
 
 export default function UserMenu({
   name,
@@ -57,6 +58,8 @@ export default function UserMenu({
               </p>
             )}
           </div>
+          <div className="h-px mx-2 my-1" style={{ background: tack.hairline }} />
+          <ThemeToggle />
           <div className="h-px mx-2 my-1" style={{ background: tack.hairline }} />
           <form action={signOut}>
             <button

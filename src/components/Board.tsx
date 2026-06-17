@@ -47,6 +47,7 @@ import Column from "./Column";
 import CardModal from "./CardModal";
 import MembersDialog from "./MembersDialog";
 import CommandPalette from "./CommandPalette";
+import ExportButton from "./ExportButton";
 import Avatar from "./Avatar";
 import TopBar from "./TopBar";
 
@@ -541,20 +542,23 @@ export default function Board({
   );
 
   const rightSlot = (
-    <button
-      onClick={() => setMembersOpen(true)}
-      className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1 border text-sm"
-      style={{ borderColor: tack.hairline, color: tack.slate, background: tack.surface }}
-      aria-label="Members"
-    >
-      <div className="flex -space-x-1.5">
-        {members.slice(0, 3).map((m) => (
-          <Avatar key={m.user_id} name={m.full_name ?? m.email} size={20} />
-        ))}
-      </div>
-      <Users size={13} />
-      <span className="font-meta">{members.length}</span>
-    </button>
+    <div className="flex items-center gap-2">
+      <ExportButton boardId={boardId} boardName={boardName} />
+      <button
+        onClick={() => setMembersOpen(true)}
+        className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1 border text-sm"
+        style={{ borderColor: tack.hairline, color: tack.slate, background: tack.surface }}
+        aria-label="Members"
+      >
+        <div className="flex -space-x-1.5">
+          {members.slice(0, 3).map((m) => (
+            <Avatar key={m.user_id} name={m.full_name ?? m.email} size={20} />
+          ))}
+        </div>
+        <Users size={13} />
+        <span className="font-meta">{members.length}</span>
+      </button>
+    </div>
   );
 
   return (

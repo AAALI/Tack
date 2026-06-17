@@ -129,9 +129,27 @@ export default function Column({
         />
         <span
           className="text-[11px] font-meta px-1.5 py-0.5 rounded-full"
-          style={{ background: tack.surface, color: tack.slate, border: `1px solid ${tack.hairline}` }}
+          style={{
+            background: tack.surface,
+            color:
+              column.wip_limit != null && cards.length > column.wip_limit
+                ? tack.pin
+                : tack.slate,
+            border: `1px solid ${
+              column.wip_limit != null && cards.length > column.wip_limit
+                ? tack.pin
+                : tack.hairline
+            }`,
+          }}
+          title={
+            column.wip_limit != null
+              ? `WIP limit: ${column.wip_limit}`
+              : undefined
+          }
         >
-          {cards.length}
+          {column.wip_limit != null
+            ? `${cards.length} / ${column.wip_limit}`
+            : cards.length}
         </span>
         <button
           onPointerDown={(e) => e.stopPropagation()}

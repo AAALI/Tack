@@ -26,6 +26,7 @@ export type Column = {
   board_id: string;
   title: string;
   position: number;
+  wip_limit?: number | null;
 };
 
 export type Member = {
