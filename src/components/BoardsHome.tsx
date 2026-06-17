@@ -139,6 +139,7 @@ export default function BoardsHome({
                     if (e.key === "Escape") {
                       setAdding(false);
                       setName("");
+                      setTemplate("default");
                     }
                   }}
                   placeholder="Name this board"

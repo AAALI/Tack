@@ -17,8 +17,8 @@ function LandingPage() {
   return (
     <div
       style={{
-        background: "#F6F5F2",
-        color: "#1B1B1F",
+        background: "var(--paper)",
+        color: "var(--ink)",
         minHeight: "100vh",
         fontFamily:
           "var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif",
@@ -27,8 +27,8 @@ function LandingPage() {
       {/* Nav */}
       <nav
         style={{
-          borderBottom: "1px solid #E6E5E1",
-          background: "rgba(246,245,242,0.85)",
+          borderBottom: "1px solid var(--hairline)",
+          background: "var(--paper)",
           backdropFilter: "blur(12px)",
           position: "sticky",
           top: 0,
@@ -52,7 +52,7 @@ function LandingPage() {
               href="/login"
               style={{
                 fontSize: 14,
-                color: "#6E6E78",
+                color: "var(--slate)",
                 textDecoration: "none",
                 fontWeight: 500,
               }}
@@ -63,7 +63,7 @@ function LandingPage() {
               href="/login"
               style={{
                 fontSize: 14,
-                background: "#E14B3B",
+                background: "var(--pin)",
                 color: "#fff",
                 textDecoration: "none",
                 fontWeight: 500,
@@ -97,8 +97,8 @@ function LandingPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "#fff",
-              border: "1px solid #E6E5E1",
+              background: "var(--surface)",
+              border: "1px solid var(--hairline)",
               borderRadius: 999,
               padding: "5px 12px 5px 8px",
               marginBottom: 28,
@@ -106,7 +106,7 @@ function LandingPage() {
           >
             <span
               style={{
-                background: "#E14B3B",
+                background: "var(--pin)",
                 color: "#fff",
                 fontSize: 10,
                 fontWeight: 700,
@@ -119,7 +119,7 @@ function LandingPage() {
             >
               Open source
             </span>
-            <span style={{ fontSize: 13, color: "#6E6E78" }}>
+            <span style={{ fontSize: 13, color: "var(--slate)" }}>
               Self-hosted · Your data · Forever free
             </span>
           </div>
@@ -132,20 +132,20 @@ function LandingPage() {
               lineHeight: 1.08,
               letterSpacing: "-0.03em",
               marginBottom: 20,
-              color: "#1B1B1F",
+              color: "var(--ink)",
             }}
           >
             The board your
             <br />
             team actually{" "}
-            <span style={{ color: "#E14B3B" }}>owns.</span>
+            <span style={{ color: "var(--pin)" }}>owns.</span>
           </h1>
 
           <p
             style={{
               fontSize: 18,
               lineHeight: 1.65,
-              color: "#6E6E78",
+              color: "var(--slate)",
               maxWidth: 440,
               marginBottom: 36,
             }}
@@ -161,7 +161,7 @@ function LandingPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                background: "#E14B3B",
+                background: "var(--pin)",
                 color: "#fff",
                 textDecoration: "none",
                 fontWeight: 600,
@@ -182,14 +182,14 @@ function LandingPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                color: "#6E6E78",
+                color: "var(--slate)",
                 textDecoration: "none",
                 fontWeight: 500,
                 fontSize: 14,
                 padding: "13px 20px",
                 borderRadius: 12,
-                border: "1px solid #E6E5E1",
-                background: "#fff",
+                border: "1px solid var(--hairline)",
+                background: "var(--surface)",
               }}
             >
               <GithubIcon />
@@ -204,7 +204,7 @@ function LandingPage() {
               gap: 20,
               marginTop: 32,
               paddingTop: 32,
-              borderTop: "1px solid #E6E5E1",
+              borderTop: "1px solid var(--hairline)",
             }}
           >
             {[
@@ -213,8 +213,8 @@ function LandingPage() {
               ["RLS secure", "Row-level security"],
             ].map(([label, sub]) => (
               <div key={label}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#1B1B1F" }}>{label}</p>
-                <p style={{ fontSize: 11, color: "#6E6E78", marginTop: 1 }}>{sub}</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{label}</p>
+                <p style={{ fontSize: 11, color: "var(--slate)", marginTop: 1 }}>{sub}</p>
               </div>
             ))}
           </div>
@@ -227,7 +227,7 @@ function LandingPage() {
       </section>
 
       {/* Social proof / stats strip */}
-      <div style={{ borderTop: "1px solid #E6E5E1", borderBottom: "1px solid #E6E5E1", background: "#fff" }}>
+      <div style={{ borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)", background: "var(--surface)" }}>
         <div
           style={{
             maxWidth: 1120,
@@ -248,11 +248,11 @@ function LandingPage() {
             <div key={stat} style={{ textAlign: "center" }}>
               <p
                 className="font-display"
-                style={{ fontSize: 18, fontWeight: 700, color: "#1B1B1F", letterSpacing: "-0.02em" }}
+                style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}
               >
                 {stat}
               </p>
-              <p style={{ fontSize: 12, color: "#6E6E78", marginTop: 2 }}>{sub}</p>
+              <p style={{ fontSize: 12, color: "var(--slate)", marginTop: 2 }}>{sub}</p>
             </div>
           ))}
         </div>
@@ -267,13 +267,13 @@ function LandingPage() {
               fontSize: "clamp(28px, 3.5vw, 40px)",
               fontWeight: 700,
               letterSpacing: "-0.025em",
-              color: "#1B1B1F",
+              color: "var(--ink)",
               marginBottom: 12,
             }}
           >
             Everything you need. Nothing you don&apos;t.
           </h2>
-          <p style={{ fontSize: 16, color: "#6E6E78", maxWidth: 480, margin: "0 auto" }}>
+          <p style={{ fontSize: 16, color: "var(--slate)", maxWidth: 480, margin: "0 auto" }}>
             Tack is deliberately small. Every feature earns its place by making
             the team ship faster, not by filling a changelog.
           </p>
@@ -292,8 +292,8 @@ function LandingPage() {
               className="fade-up"
               style={{
                 animationDelay: `${i * 0.08}s`,
-                background: "#fff",
-                border: "1px solid #E6E5E1",
+                background: "var(--surface)",
+                border: "1px solid var(--hairline)",
                 borderRadius: 16,
                 padding: "28px 28px 24px",
               }}
@@ -303,7 +303,7 @@ function LandingPage() {
                   width: 40,
                   height: 40,
                   borderRadius: 10,
-                  background: "#F6F5F2",
+                  background: "var(--paper)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -315,18 +315,18 @@ function LandingPage() {
               </div>
               <h3
                 className="font-display"
-                style={{ fontSize: 17, fontWeight: 600, color: "#1B1B1F", marginBottom: 8, letterSpacing: "-0.01em" }}
+                style={{ fontSize: 17, fontWeight: 600, color: "var(--ink)", marginBottom: 8, letterSpacing: "-0.01em" }}
               >
                 {f.title}
               </h3>
-              <p style={{ fontSize: 14, lineHeight: 1.65, color: "#6E6E78" }}>{f.desc}</p>
+              <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--slate)" }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How it works */}
-      <section style={{ background: "#fff", borderTop: "1px solid #E6E5E1", borderBottom: "1px solid #E6E5E1" }}>
+      <section style={{ background: "var(--surface)", borderTop: "1px solid var(--hairline)", borderBottom: "1px solid var(--hairline)" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "96px 24px" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2
@@ -335,13 +335,13 @@ function LandingPage() {
                 fontSize: "clamp(28px, 3.5vw, 40px)",
                 fontWeight: 700,
                 letterSpacing: "-0.025em",
-                color: "#1B1B1F",
+                color: "var(--ink)",
                 marginBottom: 12,
               }}
             >
               Up and running in minutes
             </h2>
-            <p style={{ fontSize: 16, color: "#6E6E78" }}>
+            <p style={{ fontSize: 16, color: "var(--slate)" }}>
               No Kubernetes, no ops team, no credit card required.
             </p>
           </div>
@@ -361,8 +361,8 @@ function LandingPage() {
                     width: 48,
                     height: 48,
                     borderRadius: "50%",
-                    background: i === 0 ? "#E14B3B" : "#F6F5F2",
-                    color: i === 0 ? "#fff" : "#6E6E78",
+                    background: i === 0 ? "var(--pin)" : "var(--paper)",
+                    color: i === 0 ? "#fff" : "var(--slate)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -370,25 +370,26 @@ function LandingPage() {
                     fontFamily: "var(--font-space-mono), monospace",
                     fontWeight: 700,
                     fontSize: 16,
-                    border: i !== 0 ? "1px solid #E6E5E1" : "none",
+                    border: i !== 0 ? "1px solid var(--hairline)" : "none",
                   }}
                 >
                   {i + 1}
                 </div>
                 <h3
                   className="font-display"
-                  style={{ fontSize: 16, fontWeight: 600, color: "#1B1B1F", marginBottom: 8 }}
+                  style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}
                 >
                   {s.title}
                 </h3>
-                <p style={{ fontSize: 14, color: "#6E6E78", lineHeight: 1.6 }}>{s.desc}</p>
+                <p style={{ fontSize: 14, color: "var(--slate)", lineHeight: 1.6 }}>{s.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA — intentionally always-dark card; text colours are fixed against the
+          dark background and must not change with the theme toggle. */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "96px 24px", textAlign: "center" }}>
         <div
           style={{
@@ -408,7 +409,7 @@ function LandingPage() {
               width: 12,
               height: 12,
               borderRadius: "50%",
-              background: "#E14B3B",
+              background: "var(--pin)",
             }}
           />
           <span
@@ -419,7 +420,7 @@ function LandingPage() {
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "#E14B3B",
+              background: "var(--pin)",
               opacity: 0.5,
             }}
           />
@@ -436,7 +437,7 @@ function LandingPage() {
           >
             Your board. Your data.
             <br />
-            <span style={{ color: "#E14B3B" }}>No asterisks.</span>
+            <span style={{ color: "var(--pin)" }}>No asterisks.</span>
           </h2>
           <p
             style={{
@@ -456,7 +457,7 @@ function LandingPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "#E14B3B",
+              background: "var(--pin)",
               color: "#fff",
               textDecoration: "none",
               fontWeight: 600,
@@ -475,7 +476,7 @@ function LandingPage() {
       {/* Footer */}
       <footer
         style={{
-          borderTop: "1px solid #E6E5E1",
+          borderTop: "1px solid var(--hairline)",
           padding: "32px 24px",
         }}
       >
@@ -491,13 +492,13 @@ function LandingPage() {
           }}
         >
           <TackMark size={20} withWordmark />
-          <p style={{ fontSize: 13, color: "#6E6E78" }}>
+          <p style={{ fontSize: 13, color: "var(--slate)" }}>
             Open source under the MIT License.{" "}
             <a
               href="https://github.com/aaali/tack"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#6E6E78", textDecoration: "underline" }}
+              style={{ color: "var(--slate)", textDecoration: "underline" }}
             >
               GitHub
             </a>
@@ -617,9 +618,9 @@ function BoardMockup() {
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--surface)",
         borderRadius: 20,
-        border: "1px solid #E6E5E1",
+        border: "1px solid var(--hairline)",
         boxShadow: "0 24px 64px rgba(27,27,31,0.12), 0 4px 16px rgba(27,27,31,0.06)",
         overflow: "hidden",
         userSelect: "none",
@@ -629,8 +630,8 @@ function BoardMockup() {
       <div
         style={{
           height: 44,
-          borderBottom: "1px solid #E6E5E1",
-          background: "#fff",
+          borderBottom: "1px solid var(--hairline)",
+          background: "var(--surface)",
           display: "flex",
           alignItems: "center",
           padding: "0 14px",
@@ -645,7 +646,7 @@ function BoardMockup() {
         <div
           style={{
             flex: 1,
-            background: "#F6F5F2",
+            background: "var(--paper)",
             borderRadius: 6,
             height: 24,
             maxWidth: 200,
@@ -660,7 +661,7 @@ function BoardMockup() {
           display: "flex",
           gap: 10,
           padding: 14,
-          background: "#F6F5F2",
+          background: "var(--paper)",
           overflowX: "hidden",
         }}
       >
@@ -670,9 +671,9 @@ function BoardMockup() {
             style={{
               flex: 1,
               minWidth: 0,
-              background: "#fff",
+              background: "var(--surface)",
               borderRadius: 12,
-              border: "1px solid #E6E5E1",
+              border: "1px solid var(--hairline)",
               padding: 10,
             }}
           >
@@ -680,7 +681,7 @@ function BoardMockup() {
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: "#6E6E78",
+                color: "var(--slate)",
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
                 marginBottom: 8,
@@ -694,10 +695,10 @@ function BoardMockup() {
                 <div
                   key={card.label}
                   style={{
-                    background: "#F6F5F2",
+                    background: "var(--wash)",
                     borderRadius: 8,
                     padding: "8px 9px",
-                    border: "1px solid #E6E5E1",
+                    border: "1px solid var(--hairline)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
@@ -713,14 +714,14 @@ function BoardMockup() {
                     <span
                       style={{
                         fontSize: 9,
-                        color: "#9e9ea8",
+                        color: "var(--slate)",
                         fontFamily: "var(--font-space-mono), monospace",
                       }}
                     >
                       {card.label}
                     </span>
                   </div>
-                  <p style={{ fontSize: 11, color: "#1B1B1F", lineHeight: 1.4, fontWeight: 500 }}>
+                  <p style={{ fontSize: 11, color: "var(--ink)", lineHeight: 1.4, fontWeight: 500 }}>
                     {card.title}
                   </p>
                   <div
@@ -729,7 +730,7 @@ function BoardMockup() {
                       width: 18,
                       height: 18,
                       borderRadius: "50%",
-                      background: "#E14B3B",
+                      background: "var(--pin)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",

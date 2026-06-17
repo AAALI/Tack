@@ -86,10 +86,10 @@ export default function HomeCommandPalette({
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setCursor((i) => Math.min(items.length - 1, i + 1));
+      if (items.length > 0) setCursor((i) => Math.min(items.length - 1, i + 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setCursor((i) => Math.max(0, i - 1));
+      if (items.length > 0) setCursor((i) => Math.max(0, i - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       const a = items[cursor];
