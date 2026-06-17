@@ -63,7 +63,7 @@ select isnt(
 select matches(
   (select prefix from public.boards
      where created_by = '11111111-1111-1111-1111-111111111111'),
-  '^[A-Z0-9]{2,6}$',
+  '^[A-Z0-9]{3}$',
   'derived prefix matches the format constraint'
 );
 

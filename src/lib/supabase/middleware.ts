@@ -32,8 +32,15 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthRoute = path.startsWith("/login") || path.startsWith("/auth");
+  // Public routes accessible without a session: the marketing landing page and
+  // the SEO / crawler files (these must never redirect to /login).
+  const isPublicRoute =
+    path === "/" ||
+    path === "/robots.txt" ||
+    path === "/sitemap.xml" ||
+    path === "/manifest.webmanifest";
 
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

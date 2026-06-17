@@ -2,12 +2,16 @@
 -- The prefix was previously 2–6 chars, producing IDs like `BOARD-12`.
 -- Standardize on an exactly-3-char prefix so IDs read `BRD-12`.
 
--- 1. Normalize existing prefixes to exactly 3 chars.
---    Too-long  -> truncate to the first 3 chars.
---    Too-short -> right-pad with 'X' to reach 3.
+-- 1. Normalize every existing prefix to satisfy ^[A-Z0-9]{3}$.
+--    Strip non-alphanumerics, uppercase, then size to exactly 3 chars:
+--    too-long -> truncate to the first 3; too-short -> right-pad with 'X'.
+--    Applied to all rows (not just length mismatches) so legacy 3-char
+--    prefixes with lowercase or punctuation are also brought into spec.
 update public.boards
-   set prefix = rpad(substring(prefix from 1 for 3), 3, 'X')
- where length(prefix) <> 3;
+   set prefix = rpad(
+         substring(upper(regexp_replace(prefix, '[^A-Za-z0-9]', '', 'g')) from 1 for 3),
+         3, 'X'
+       );
 
 -- 2. Tighten the format constraint to exactly 3 chars.
 alter table public.boards drop constraint if exists boards_prefix_format;
