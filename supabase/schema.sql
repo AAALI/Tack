@@ -19,7 +19,7 @@ create table if not exists public.boards (
   prefix      text not null default 'BRD',
   created_by  uuid references auth.users (id) on delete set null,
   created_at  timestamptz not null default now(),
-  constraint  boards_prefix_format check (prefix ~ '^[A-Z0-9]{2,6}$')
+  constraint  boards_prefix_format check (prefix ~ '^[A-Z0-9]{3}$')
 );
 
 create table if not exists public.board_members (
@@ -166,13 +166,10 @@ begin
   insert into public.boards (name, prefix, created_by)
   values (
     board_name,
-    -- Derive a 2–6 char [A-Z0-9] prefix from the name; fall back to 'BRD'.
-    (select case
-              when length(d) < 2 then rpad(d, 2, 'X')
-              else d
-            end
+    -- Derive an exactly-3-char [A-Z0-9] prefix from the name; fall back to 'BRD'.
+    (select rpad(d, 3, 'X')
        from (select coalesce(
-                      nullif(substring(upper(regexp_replace(board_name, '[^A-Za-z0-9]', '', 'g')) from 1 for 6), ''),
+                      nullif(substring(upper(regexp_replace(board_name, '[^A-Za-z0-9]', '', 'g')) from 1 for 3), ''),
                       'BRD') as d) s),
     auth.uid()
   )
