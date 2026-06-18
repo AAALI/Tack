@@ -68,7 +68,7 @@ function LandingPage() {
               Pricing
             </a>
             <a
-              href="https://github.com/aaali/tack"
+              href="https://github.com/AAALI/Tack"
               target="_blank"
               rel="noopener noreferrer"
               style={navLinkStyle}
@@ -381,7 +381,7 @@ function LandingPage() {
                 "Community support on GitHub",
               ]}
               cta="View on GitHub"
-              ctaHref="https://github.com/aaali/tack"
+              ctaHref="https://github.com/AAALI/Tack"
               ctaExternal
               variant="ghost"
             />
@@ -575,7 +575,7 @@ function LandingPage() {
               <ArrowRight size={16} />
             </Link>
             <a
-              href="https://github.com/aaali/tack"
+              href="https://github.com/AAALI/Tack"
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -615,7 +615,7 @@ function LandingPage() {
           <p style={{ fontSize: 13, color: "var(--slate)" }}>
             Open source under the MIT License.{" "}
             <a
-              href="https://github.com/aaali/tack"
+              href="https://github.com/AAALI/Tack"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "var(--slate)", textDecoration: "underline" }}
