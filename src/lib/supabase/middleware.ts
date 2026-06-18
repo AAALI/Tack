@@ -25,10 +25,16 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh the session and keep cookies in sync.
+  // Read the session from the cookie and keep it in sync. We deliberately use
+  // getSession() (local JWT decode, only hits the network to rotate an expired
+  // token) rather than getUser() (a network round-trip to Supabase Auth on
+  // *every* request, including every RSC fetch). The redirect below is just a
+  // UX gate — actual data access is authorized by RLS, which verifies the JWT
+  // signature server-side on every query, so a forged cookie reads nothing.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   const path = request.nextUrl.pathname;
   const isAuthRoute = path.startsWith("/login") || path.startsWith("/auth");

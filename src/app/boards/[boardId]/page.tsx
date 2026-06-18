@@ -23,6 +23,8 @@ export default async function BoardPage({
 
   // Fire all board-scoped reads in parallel. They're independent and RLS makes
   // any of them safe to attempt even if the board id is bogus / not a member.
+  // board_member_profiles() joins board_members → profiles server-side so we
+  // get member names in this same batch instead of a serial follow-up query.
   const [
     { data: board, error: boardErr },
     { data: columns },
@@ -33,7 +35,7 @@ export default async function BoardPage({
     supabase.from("boards").select("id, name, prefix").eq("id", boardId).maybeSingle(),
     supabase.from("columns").select("*").eq("board_id", boardId).order("position"),
     supabase.from("cards").select("*").eq("board_id", boardId).order("position"),
-    supabase.from("board_members").select("user_id, role").eq("board_id", boardId),
+    supabase.rpc("board_member_profiles", { b: boardId }),
   ]);
 
   if (boardErr) {
@@ -53,28 +55,29 @@ export default async function BoardPage({
     redirect("/boards");
   }
 
-  // Merge member profiles (no direct FK between board_members and profiles).
-  const ids = (memberRows ?? []).map((m) => m.user_id);
-  const { data: profiles } = ids.length
-    ? await supabase.from("profiles").select("id, full_name, email").in("id", ids)
-    : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+  // board_member_profiles() already returns the joined profile, so no second
+  // round-trip is needed here.
+  type MemberRow = {
+    user_id: string;
+    role: string;
+    full_name: string | null;
+    email: string | null;
+  };
+  const rows = (memberRows ?? []) as MemberRow[];
 
-  const members: Member[] = (memberRows ?? []).map((m) => {
-    const p = (profiles ?? []).find((x) => x.id === m.user_id);
-    return {
-      user_id: m.user_id,
-      role: m.role as Member["role"],
-      full_name: p?.full_name ?? null,
-      email: p?.email ?? null,
-    };
-  });
+  const members: Member[] = rows.map((m) => ({
+    user_id: m.user_id,
+    role: m.role as Member["role"],
+    full_name: m.full_name,
+    email: m.email,
+  }));
 
   const isOwner = members.some((m) => m.user_id === user.id && m.role === "owner");
 
-  const myProfile = (profiles ?? []).find((p) => p.id === user.id);
+  const myRow = rows.find((m) => m.user_id === user.id);
   const me = {
-    name: myProfile?.full_name ?? null,
-    email: myProfile?.email ?? user.email ?? null,
+    name: myRow?.full_name ?? null,
+    email: myRow?.email ?? user.email ?? null,
   };
 
   return (
