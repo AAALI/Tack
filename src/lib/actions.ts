@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { sendBoardInvite } from "@/lib/email/notifications";
 import type { CardLink, Priority } from "@/lib/types";
 
 async function db() {
@@ -39,12 +40,32 @@ export async function deleteBoard(boardId: string) {
 
 export async function addMember(boardId: string, email: string) {
   const supabase = await db();
+  const target = email.trim();
   const { error } = await supabase.rpc("add_board_member", {
     board: boardId,
-    member_email: email.trim(),
+    member_email: target,
   });
   if (error) return { error: error.message };
   revalidatePath(`/boards/${boardId}`);
+
+  // Best-effort invite email — never let a mail failure fail the add.
+  try {
+    const [{ data: board }, { data: { user } }] = await Promise.all([
+      supabase.from("boards").select("name").eq("id", boardId).single(),
+      supabase.auth.getUser(),
+    ]);
+    const inviterName =
+      (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? null;
+    await sendBoardInvite({
+      to: target,
+      boardId,
+      boardName: board?.name ?? "a board",
+      inviterName,
+    });
+  } catch (e) {
+    console.error("Board invite email failed:", e);
+  }
+
   return { error: null };
 }
 

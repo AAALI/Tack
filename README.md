@@ -38,6 +38,8 @@ exports cleanly.
 - **Row-level security** — every query goes through Postgres RLS keyed on `board_members`. A
   non-member literally can't read another team's board, even via a raw API call.
 - **Magic-link login** — email OTP, no passwords. Google OAuth also works via the same callback.
+- **Branded email** — sign-in, welcome, and board-invite emails matched to the brand. App
+  notifications are optional (Resend) and a no-op until you add a key. See [`docs/EMAIL.md`](docs/EMAIL.md).
 - **Keyboard-first** — `⌘/Ctrl+K` command palette (jump to board/card, create, toggle theme),
   `C` to create a card, `/` to filter, `?` for the shortcut cheatsheet.
 - **Shareable filters** — filter by assignee, label, priority, or due date; the filter lives in the
@@ -86,10 +88,11 @@ npm run dev          # http://localhost:3000
 Sign in, then create your first board: click **New board** in the sidebar. It seeds the default
 columns and makes you the owner.
 
-See [`.env.example`](.env.example) for all variables. There are only three, and all are public —
-the two Supabase values plus `NEXT_PUBLIC_SITE_URL` (used for SEO canonical tags, the sitemap, and
-link-preview images). **Nothing secret runs server-side: RLS is the security boundary. Do not add a
-service-role key to this app.**
+See [`.env.example`](.env.example) for all variables. The three you need are public — the two
+Supabase values plus `NEXT_PUBLIC_SITE_URL` (used for SEO canonical tags, the sitemap, and
+link-preview images). **RLS is the security boundary: do not add a Supabase service-role key to this
+app.** The only optional server-side secret is `RESEND_API_KEY`, used purely to send notification
+email (see [Email](#4-email-optional)); leave it unset and email is disabled.
 
 ### 3. Deploy to Cloudflare
 
@@ -116,6 +119,19 @@ npm run deploy       # opennextjs-cloudflare build && deploy
 After the first deploy, point a custom domain at the Worker and add `https://that-domain/auth/callback`
 to the Supabase redirect allow-list.
 
+### 4. Email (optional)
+
+Tack sends two kinds of email, and you can set up either independently:
+
+- **Sign-in links** are sent by **Supabase** over its own SMTP. Configure SMTP and paste the branded
+  template from [`supabase/templates/magic_link.html`](supabase/templates/magic_link.html) under
+  **Authentication → Emails**.
+- **Welcome and board-invite** emails are sent by the app through [Resend](https://resend.com). Set
+  `RESEND_API_KEY` (a runtime secret: `npx wrangler secret put RESEND_API_KEY`) and `RESEND_FROM`.
+
+Leave `RESEND_API_KEY` unset and those app notifications are a quiet no-op — no errors, no setup.
+Full walkthrough in [`docs/EMAIL.md`](docs/EMAIL.md).
+
 ---
 
 ## How access works
@@ -140,13 +156,16 @@ src/
     boards/                     # board list, [boardId] board view
     sitemap.ts, robots.ts, manifest.ts, opengraph-image.png …   # SEO / link previews
   components/                   # Board, Column, Card, CardModal, Sidebar, CommandPalette, etc.
+  emails/                       # branded email content (shell + welcome/invite builders)
   lib/
     actions.ts                  # all server actions ("use server")
+    email/{resend,notifications}.ts   # Resend transport + typed senders
     types.ts, theme.ts
     supabase/{client,server,middleware}.ts
 supabase/
   schema.sql                    # source of truth for fresh installs
   migrations/                   # numbered, run in order to upgrade an existing install
+  templates/magic_link.html     # branded sign-in email for Supabase Auth
   tests/database/rls.test.sql   # RLS regression tests
 ```
 
