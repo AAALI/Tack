@@ -1,11 +1,18 @@
 /**
- * The Tack mark: a rounded card with a single red Pin dot top-left
+ * The Tack mark: a dark rounded card with a single red Pin dot top-left
  * and two faint hairlines suggesting card text. Reads as "a pinned card"
  * at any size. See BRAND.md §4.
  *
- * Colours are driven by CSS variables so the mark adapts to light/dark
- * automatically — never hard-code theme hexes here.
+ * The mark uses a FIXED brand palette (not theme CSS variables) so it stays
+ * legible and identical on every surface, regardless of the user's system or
+ * data-theme. The app chrome is light, so the card is a dark mark and the
+ * wordmark is dark ink — both high-contrast and readable on light.
  */
+const CARD = "#1f1f23"; // dark "pinned card"
+const CARD_LINE = "#52525a"; // faint card-text hairlines (contrast the dark card)
+const PIN = "#e14b3b"; // brand red
+const WORDMARK = "#1b1b1f"; // ink — readable on the light app chrome
+
 export default function TackMark({
   size = 28,
   withWordmark = false,
@@ -22,20 +29,11 @@ export default function TackMark({
       aria-label="Tack"
       style={{ display: "block" }}
     >
-      <rect
-        x="2.5"
-        y="2.5"
-        width="27"
-        height="27"
-        rx="6"
-        fill="var(--surface)"
-        stroke="var(--hairline)"
-        strokeWidth="1"
-      />
-      <circle cx="8" cy="9" r="2.6" fill="var(--pin)" />
-      <rect x="13" y="8" width="12" height="1.6" rx="0.8" fill="var(--hairline)" />
-      <rect x="7" y="17" width="18" height="1.4" rx="0.7" fill="var(--hairline)" />
-      <rect x="7" y="22" width="11" height="1.4" rx="0.7" fill="var(--hairline)" />
+      <rect x="2.5" y="2.5" width="27" height="27" rx="6" fill={CARD} />
+      <circle cx="8" cy="9" r="2.6" fill={PIN} />
+      <rect x="13" y="8" width="12" height="1.6" rx="0.8" fill={CARD_LINE} />
+      <rect x="7" y="17" width="18" height="1.4" rx="0.7" fill={CARD_LINE} />
+      <rect x="7" y="22" width="11" height="1.4" rx="0.7" fill={CARD_LINE} />
     </svg>
   );
 
@@ -47,7 +45,7 @@ export default function TackMark({
       <span
         className="font-display lowercase"
         style={{
-          color: "var(--ink)",
+          color: WORDMARK,
           fontSize: Math.round(size * 0.72),
           fontWeight: 600,
           letterSpacing: "-0.02em",
@@ -55,7 +53,7 @@ export default function TackMark({
         }}
       >
         tack
-        <span style={{ color: "var(--pin)" }}>.</span>
+        <span style={{ color: PIN }}>.</span>
       </span>
     </span>
   );
