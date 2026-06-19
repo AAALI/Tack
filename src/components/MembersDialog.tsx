@@ -5,6 +5,7 @@ import { X, UserPlus } from "lucide-react";
 import { addMember, removeMember } from "@/lib/actions";
 import { THEME, tack, type Member } from "@/lib/types";
 import Avatar from "./Avatar";
+import { useToast } from "./Toast";
 
 export default function MembersDialog({
   boardId,
@@ -22,13 +23,18 @@ export default function MembersDialog({
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+  const toast = useToast();
 
   const add = () => {
     setError("");
+    const target = email.trim();
     start(async () => {
-      const res = await addMember(boardId, email.trim());
+      const res = await addMember(boardId, target);
       if (res?.error) setError(res.error);
-      else setEmail("");
+      else {
+        setEmail("");
+        toast(`Added ${target} to the board`, "success");
+      }
     });
   };
 

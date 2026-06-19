@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2, Plus, ExternalLink } from "lucide-react";
+import { X, Trash2, Plus, ExternalLink, Link2 } from "lucide-react";
 import {
   THEME,
   tack,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/types";
 import type { CardPatch } from "@/lib/actions";
 import Avatar from "./Avatar";
+import { useToast } from "./Toast";
 
 const PRIORITIES: Priority[] = ["none", "low", "medium", "high"];
 
@@ -39,6 +40,20 @@ export default function CardModal({
   const [labels, setLabels] = useState<string[]>(card.labels);
   const [links, setLinks] = useState<CardLink[]>(card.links);
   const [labelDraft, setLabelDraft] = useState("");
+  const toast = useToast();
+
+  const copyLink = async () => {
+    const url = `${window.location.origin}${window.location.pathname}?card=${card.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast(
+        card.number !== null ? `Link to ${boardPrefix}-${card.number} copied` : "Link copied",
+        "success"
+      );
+    } catch {
+      toast("Couldn't copy the link", "error");
+    }
+  };
 
   const commit = (extra: CardPatch = {}) =>
     onSave({
@@ -69,14 +84,24 @@ export default function CardModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5">
-          {card.number !== null && (
-            <p
-              className="font-meta text-[11px] tracking-[0.08em] uppercase mb-1"
+          <div className="flex items-center gap-2 mb-1">
+            {card.number !== null && (
+              <p
+                className="font-meta text-[11px] tracking-[0.08em] uppercase"
+                style={{ color: tack.slate }}
+              >
+                {boardPrefix}-{card.number}
+              </p>
+            )}
+            <button
+              onClick={copyLink}
+              className="flex items-center gap-1 font-meta text-[11px] uppercase tracking-[0.08em] hover:opacity-70"
               style={{ color: tack.slate }}
+              title="Copy link to this card"
             >
-              {boardPrefix}-{card.number}
-            </p>
-          )}
+              <Link2 size={12} /> Copy link
+            </button>
+          </div>
           <div className="flex items-start justify-between gap-3">
             <textarea
               rows={2}
