@@ -498,13 +498,14 @@ export default function Board({
     return () => window.removeEventListener("keydown", onKey);
   }, [columns, editing, membersOpen, helpOpen, paletteOpen, setEditing]);
 
-  // New-board trigger fired from the palette. Tiny prompt; the action handles
-  // the redirect to the freshly-created board.
-  const newBoardFromPalette = useCallback(() => {
+  // New-board trigger fired from the palette. Tiny prompt; navigate to the
+  // freshly-created board once the action returns its id.
+  const newBoardFromPalette = useCallback(async () => {
     const name = window.prompt("Name this board");
     if (!name?.trim()) return;
-    createBoard(name.trim());
-  }, []);
+    const res = await createBoard(name.trim());
+    if (res?.id) router.push(`/boards/${res.id}`);
+  }, [router]);
 
   const centerSlot = (
     <div className="flex items-center gap-2 min-w-0">
@@ -521,7 +522,7 @@ export default function Board({
           }}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           className="text-base font-display outline-none border-b bg-transparent min-w-0"
-          style={{ borderColor: tack.pin, fontWeight: 600, color: tack.ink }}
+          style={{ borderColor: tack.hairline, fontWeight: 600, color: tack.ink }}
         />
       ) : (
         <button

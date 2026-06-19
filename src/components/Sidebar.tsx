@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Plus, LogOut } from "lucide-react";
 import { createBoard, signOut } from "@/lib/actions";
 import { THEME, tack, type BoardSummary } from "@/lib/types";
@@ -17,16 +17,24 @@ export default function Sidebar({
   me: { name: string | null; email: string | null };
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const submit = () => {
-    if (!name.trim()) return;
+    if (!name.trim() || pending) return;
+    setError(null);
     start(async () => {
-      await createBoard(name.trim());
+      const res = await createBoard(name.trim());
+      if (res?.error || !res?.id) {
+        setError(res?.error ?? "Couldn't create the board.");
+        return;
+      }
       setName("");
       setAdding(false);
+      router.push(`/boards/${res.id}`);
     });
   };
 
@@ -88,19 +96,27 @@ export default function Sidebar({
               }}
               placeholder="Name this board"
               className="w-full rounded-md px-2 py-1.5 text-sm outline-none border"
-              style={{ borderColor: tack.pin }}
+              style={{ borderColor: tack.hairline }}
             />
+            {error && (
+              <p className="text-xs mt-1.5" style={{ color: tack.pin }}>
+                {error}
+              </p>
+            )}
             <div className="flex gap-2 mt-1.5">
               <button
                 onClick={submit}
-                disabled={pending}
-                className="text-xs px-2.5 py-1 rounded-md text-white font-medium disabled:opacity-60"
+                disabled={pending || !name.trim()}
+                className="text-xs px-2.5 py-1 rounded-md text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ background: tack.pin }}
               >
                 {pending ? "Creating…" : "Create"}
               </button>
               <button
-                onClick={() => setAdding(false)}
+                onClick={() => {
+                  setAdding(false);
+                  setError(null);
+                }}
                 className="text-xs px-2 py-1 rounded-md"
                 style={{ color: THEME.muted }}
               >
