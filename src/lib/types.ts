@@ -38,6 +38,33 @@ export type Member = {
 
 export type BoardSummary = { id: string; name: string; role: string };
 
+export type CardEventKind = "created" | "moved" | "updated";
+
+export type CardEvent = {
+  id: string;
+  card_id: string;
+  board_id: string;
+  actor: string | null;
+  kind: CardEventKind;
+  payload: { from?: string; to?: string; fields?: string[] };
+  created_at: string;
+};
+
+// Compact relative time for activity/metadata. "just now", "4m", "3h", "2d",
+// then falls back to a short date.
+export function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const secs = Math.round((Date.now() - then) / 1000);
+  if (secs < 45) return "just now";
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 // Re-export brand tokens so existing call-sites keep working.
 import { THEME, tack } from "./theme";
 export { THEME, tack };

@@ -56,10 +56,22 @@ create table if not exists public.cards (
   updated_at  timestamptz not null default now()
 );
 
+create table if not exists public.card_events (
+  id          uuid primary key default gen_random_uuid(),
+  card_id     uuid not null references public.cards (id)  on delete cascade,
+  board_id    uuid not null references public.boards (id) on delete cascade,
+  actor       uuid references auth.users (id) on delete set null,
+  kind        text not null check (kind in ('created', 'moved', 'updated')),
+  payload     jsonb not null default '{}',
+  created_at  timestamptz not null default now()
+);
+
 create index if not exists cards_board_idx   on public.cards (board_id);
 create index if not exists cards_column_idx  on public.cards (column_id);
 create index if not exists columns_board_idx on public.columns (board_id);
 create unique index if not exists cards_board_number_uniq on public.cards (board_id, number);
+create index if not exists card_events_card_idx  on public.card_events (card_id, created_at desc);
+create index if not exists card_events_board_idx on public.card_events (board_id);
 
 -- ---------- Trigger: auto-assign per-board card number ----------
 -- BEFORE INSERT so the row carries its number before any constraint check.
@@ -84,6 +96,59 @@ drop trigger if exists cards_assign_number on public.cards;
 create trigger cards_assign_number
   before insert on public.cards
   for each row execute function public.assign_card_number();
+
+-- ---------- Trigger: append-only card activity log ----------
+-- Records create / move / field-edit events. SECURITY DEFINER so its writes
+-- bypass the read-only RLS on card_events (only this trigger ever writes).
+-- DELETE is not logged — the card and its events cascade away together.
+
+create or replace function public.log_card_event()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  changed text[] := '{}';
+begin
+  if tg_op = 'INSERT' then
+    insert into public.card_events (card_id, board_id, actor, kind)
+    values (new.id, new.board_id, auth.uid(), 'created');
+    return new;
+  end if;
+
+  if new.column_id is distinct from old.column_id then
+    insert into public.card_events (card_id, board_id, actor, kind, payload)
+    values (
+      new.id, new.board_id, auth.uid(), 'moved',
+      jsonb_build_object(
+        'from', (select title from public.columns where id = old.column_id),
+        'to',   (select title from public.columns where id = new.column_id)
+      )
+    );
+  end if;
+
+  if new.title       is distinct from old.title       then changed := changed || 'title';       end if;
+  if new.description is distinct from old.description  then changed := changed || 'description'; end if;
+  if new.assignee    is distinct from old.assignee    then changed := changed || 'assignee';    end if;
+  if new.due_date    is distinct from old.due_date    then changed := changed || 'due date';    end if;
+  if new.priority    is distinct from old.priority     then changed := changed || 'priority';     end if;
+  if new.labels      is distinct from old.labels       then changed := changed || 'labels';       end if;
+  if new.links       is distinct from old.links        then changed := changed || 'links';        end if;
+
+  if array_length(changed, 1) > 0 then
+    insert into public.card_events (card_id, board_id, actor, kind, payload)
+    values (new.id, new.board_id, auth.uid(), 'updated',
+            jsonb_build_object('fields', changed));
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists cards_log_event on public.cards;
+create trigger cards_log_event
+  after insert or update on public.cards
+  for each row execute function public.log_card_event();
 
 -- ---------- New-user profile trigger ----------
 
@@ -225,6 +290,9 @@ grant select, insert, update, delete on
   public.cards
 to authenticated;
 
+-- card_events is read-only for clients; the SECURITY DEFINER trigger writes it.
+grant select on public.card_events to authenticated;
+
 grant select, update on public.profiles to authenticated;
 
 grant usage, select on all sequences in schema public to authenticated;
@@ -236,6 +304,7 @@ alter table public.boards        enable row level security;
 alter table public.board_members enable row level security;
 alter table public.columns       enable row level security;
 alter table public.cards         enable row level security;
+alter table public.card_events   enable row level security;
 
 -- ---------- Policies ----------
 
@@ -296,7 +365,13 @@ create policy cards_all on public.cards
   using (public.is_board_member(board_id))
   with check (public.is_board_member(board_id));
 
+-- card_events: members read; nobody writes through the API (trigger-only).
+drop policy if exists card_events_read on public.card_events;
+create policy card_events_read on public.card_events
+  for select to authenticated using (public.is_board_member(board_id));
+
 -- ---------- Realtime ----------
 -- Let board members receive live updates. RLS still applies to the stream.
 alter publication supabase_realtime add table public.cards;
 alter publication supabase_realtime add table public.columns;
+alter publication supabase_realtime add table public.card_events;

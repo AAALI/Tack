@@ -1,19 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Trash2, Plus, ExternalLink, Link2 } from "lucide-react";
 import {
   THEME,
   tack,
   PRIORITY_COLOR,
+  timeAgo,
   type Card as TCard,
+  type CardEvent,
   type CardLink,
   type Member,
   type Priority,
 } from "@/lib/types";
 import type { CardPatch } from "@/lib/actions";
+import { createClient } from "@/lib/supabase/client";
 import Avatar from "./Avatar";
 import { useToast } from "./Toast";
+
+function describeEvent(ev: CardEvent, actorName: string): string {
+  switch (ev.kind) {
+    case "created":
+      return `${actorName} created this card`;
+    case "moved":
+      return `${actorName} moved this from ${ev.payload.from ?? "—"} to ${ev.payload.to ?? "—"}`;
+    case "updated":
+      return `${actorName} updated ${(ev.payload.fields ?? []).join(", ") || "this card"}`;
+  }
+}
 
 const PRIORITIES: Priority[] = ["none", "low", "medium", "high"];
 
@@ -40,7 +54,45 @@ export default function CardModal({
   const [labels, setLabels] = useState<string[]>(card.labels);
   const [links, setLinks] = useState<CardLink[]>(card.links);
   const [labelDraft, setLabelDraft] = useState("");
+  const [events, setEvents] = useState<CardEvent[]>([]);
   const toast = useToast();
+
+  // Activity log. Optimistic temp cards (tmp_…) have no server row yet, so
+  // there's nothing to fetch. Refetch on any card_events change for this card.
+  const isPersisted = !card.id.startsWith("tmp_");
+  useEffect(() => {
+    if (!isPersisted) return;
+    const supabase = createClient();
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("card_events")
+        .select("*")
+        .eq("card_id", card.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (!cancelled && data) setEvents(data as CardEvent[]);
+    };
+    load();
+    const channel = supabase
+      .channel(`card_events:${card.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "card_events", filter: `card_id=eq.${card.id}` },
+        load
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [card.id, isPersisted]);
+
+  const actorName = (id: string | null): string => {
+    if (!id) return "Someone";
+    const m = members.find((x) => x.user_id === id);
+    return m?.full_name ?? m?.email ?? "Someone";
+  };
 
   const copyLink = async () => {
     const url = `${window.location.origin}${window.location.pathname}?card=${card.id}`;
@@ -272,6 +324,30 @@ export default function CardModal({
               </div>
             </div>
           </div>
+
+          {/* Activity */}
+          {isPersisted && events.length > 0 && (
+            <>
+              <label className="block text-[11px] font-meta uppercase tracking-[0.08em] mt-5 mb-2" style={{ color: THEME.muted }}>
+                Activity
+              </label>
+              <ul className="space-y-2">
+                {events.map((ev) => (
+                  <li key={ev.id} className="flex items-start gap-2 text-xs" style={{ color: tack.slate }}>
+                    <span
+                      className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{ background: tack.hairline }}
+                      aria-hidden
+                    />
+                    <span className="flex-1 leading-snug">
+                      <span style={{ color: tack.ink }}>{describeEvent(ev, actorName(ev.actor))}</span>
+                      <span className="font-meta"> · {timeAgo(ev.created_at)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           <div className="flex justify-between items-center mt-6">
             <button

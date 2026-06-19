@@ -10,7 +10,7 @@
 -- =====================================================================
 
 begin;
-select plan(13);
+select plan(16);
 
 -- ---------- Personas ----------
 -- The new-user trigger (handle_new_user) auto-populates public.profiles.
@@ -93,6 +93,17 @@ select is(
   'assign_card_number trigger assigns 1..N per board'
 );
 
+-- ---------- Activity log: insert trigger writes a 'created' event per card ----------
+select is(
+  (select count(*)::int from public.card_events
+    where board_id = (
+      select id from public.boards
+       where created_by = '11111111-1111-1111-1111-111111111111'
+    ) and kind = 'created'),
+  3,
+  'log_card_event trigger records a created event for each new card'
+);
+
 -- ---------- Alice adds Bob as a member by email ----------
 do $$
 declare bid uuid;
@@ -122,6 +133,20 @@ select is(
   (select count(*)::int from public.cards),
   0,
   'Non-member cannot SELECT any card'
+);
+
+select is(
+  (select count(*)::int from public.card_events),
+  0,
+  'Non-member cannot SELECT any card event'
+);
+
+select throws_ok(
+  $$ insert into public.card_events (card_id, board_id, kind)
+     values (gen_random_uuid(), gen_random_uuid(), 'created') $$,
+  '42501',
+  null,
+  'No one can INSERT card events through the API (trigger-only, no grant)'
 );
 
 select throws_ok(
