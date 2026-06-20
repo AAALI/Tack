@@ -47,7 +47,28 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
         run: npx opennextjs-cloudflare build
 
-  # TODO(v1.0): Re-enable a `db` job once `supabase/config.toml` is committed
-  # (via `supabase init`). For now run RLS tests locally with:
-  #     supabase start && supabase test db
-  # See `supabase/tests/database/rls.test.sql`.
+  # RLS regression guard. Stands up a bare Postgres + pgTAP, applies the
+  # canonical schema.sql (the source of truth for a fresh install) on top of
+  # tests/setup.sql's Supabase scaffolding, then runs the pgTAP suite. A PR that
+  # weakens a policy fails here before a human reviews it.
+  db:
+    name: RLS · pgTAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Postgres 16 + pgTAP
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            postgresql postgresql-contrib postgresql-16-pgtap \
+            libtap-parser-sourcehandler-pgtap-perl
+          sudo pg_ctlcluster 16 main start
+
+      - name: Apply schema + run RLS tests
+        run: |
+          sudo -u postgres psql -q -c "create database tacktest;"
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -q -d tacktest -f supabase/tests/setup.sql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -q -d tacktest -f supabase/schema.sql
+          sudo -u postgres pg_prove -d tacktest supabase/tests/database/rls.test.sql

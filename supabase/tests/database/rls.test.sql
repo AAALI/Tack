@@ -188,13 +188,10 @@ select throws_ok(
 
 select throws_ok(
   $$ insert into public.cards (board_id, column_id, title)
-     select b.id, c.id, 'sneaky'
-       from public.boards b
-       join public.columns c on c.board_id = b.id
-      limit 1 $$,
-  '23502',
-  null,
-  'Non-member INSERT is blocked (board_id resolves to no rows under RLS, NOT NULL fails)'
+     values (gen_random_uuid(), gen_random_uuid(), 'sneaky') $$,
+  '42501',
+  'new row violates row-level security policy for table "cards"',
+  'Non-member INSERT is rejected by the cards RLS WITH CHECK'
 );
 
 -- ---------- profiles_read is co-member-scoped ----------
