@@ -138,13 +138,13 @@ begin
     );
   end if;
 
-  if new.title       is distinct from old.title       then changed := changed || 'title';       end if;
-  if new.description is distinct from old.description  then changed := changed || 'description'; end if;
-  if new.assignee    is distinct from old.assignee    then changed := changed || 'assignee';    end if;
-  if new.due_date    is distinct from old.due_date    then changed := changed || 'due date';    end if;
-  if new.priority    is distinct from old.priority     then changed := changed || 'priority';     end if;
-  if new.labels      is distinct from old.labels       then changed := changed || 'labels';       end if;
-  if new.links       is distinct from old.links        then changed := changed || 'links';        end if;
+  if new.title       is distinct from old.title       then changed := array_append(changed, 'title');       end if;
+  if new.description is distinct from old.description  then changed := array_append(changed, 'description'); end if;
+  if new.assignee    is distinct from old.assignee    then changed := array_append(changed, 'assignee');    end if;
+  if new.due_date    is distinct from old.due_date    then changed := array_append(changed, 'due date');    end if;
+  if new.priority    is distinct from old.priority     then changed := array_append(changed, 'priority');     end if;
+  if new.labels      is distinct from old.labels       then changed := array_append(changed, 'labels');       end if;
+  if new.links       is distinct from old.links        then changed := array_append(changed, 'links');        end if;
 
   if array_length(changed, 1) > 0 then
     insert into public.card_events (card_id, board_id, actor, kind, payload)
