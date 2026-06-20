@@ -43,15 +43,16 @@ external users bounce.
 - **Acceptance:** a power user can create, find, and open a card without touching the mouse.
 
 ### 3. Client-side filter bar
-- [ ] Filters: assignee, label, priority, due (overdue / this week / no date), "mine".
-- [ ] Filters encoded in the URL query string so they're shareable and survive reload.
-- [ ] Clear-all chip; visible count of hidden cards per column.
+- [x] Filters: assignee, label, priority, due (overdue / this week / no date), "mine".
+- [x] Filters encoded in the URL query string so they're shareable and survive reload.
+- [x] Clear-all chip; visible count of hidden cards per column.
 - **Acceptance:** filter to "mine + high priority" → share URL → teammate sees same view.
 
 ### 4. Deep-linkable card modal
-- [ ] `/boards/:boardId?card=:cardId` opens the modal on load.
-- [ ] Closing the modal removes the param (no scroll jump, no full reload).
-- [ ] 404 on the card id → toast, strip the param, keep the board.
+- [x] `/boards/:boardId?card=:cardId` opens the modal on load.
+- [x] Closing the modal removes the param (no scroll jump, no full reload).
+- [x] 404 on the card id → banner, strip the param, keep the board.
+- [x] "Copy link" affordance in the modal copies the deep link.
 - **Acceptance:** pasting a card URL in Slack opens the right card for any board member.
 
 ### 5. Tighten `profiles_read` to co-members only
@@ -75,18 +76,20 @@ external users bounce.
 The features that turn a clean demo into a tool people open every morning.
 
 ### 7. Activity log
-- [ ] `card_events (id, card_id, board_id, actor uuid, kind text, payload jsonb, created_at)`.
-- [ ] Insert via DB triggers on `cards` (create/update/delete/move) — never from the app.
-- [ ] "Activity" tab in `CardModal`, newest first, with relative timestamps.
-- [ ] RLS: read = board member. Append-only (no update/delete policy).
+- [x] `card_events (id, card_id, board_id, actor uuid, kind text, payload jsonb, created_at)`.
+- [x] Insert via a DB trigger on `cards` (create/update/move) — never from the app. (Deletes
+      cascade away with the card, so they aren't logged.)
+- [x] "Activity" section in `CardModal`, newest first, with relative timestamps, live over Realtime.
+- [x] RLS: read = board member. Append-only (no insert/update/delete policy; trigger-only writes).
 - **Acceptance:** moving a card writes "Sam moved this to Done, 2m ago" visible to all members.
 
 ### 8. Email-invite flow (fixes the chicken-and-egg)
-- [ ] `board_invites (board_id, email citext, invited_by, created_at, primary key (board_id, email))`.
-- [ ] `add_board_member` falls back to inserting an invite when the email has no profile yet.
-- [ ] On `auth.users` insert, after `handle_new_user`, consume any invites matching the email
-      and insert `board_members` rows.
-- [ ] Owner sees pending invites in `MembersDialog` and can revoke.
+- [x] `board_invites (board_id, email, invited_by, created_at, primary key (board_id, email))`.
+- [x] `add_board_member` falls back to inserting an invite when the email has no profile yet
+      (returns `'added' | 'invited'`).
+- [x] On `auth.users` insert, `handle_new_user` consumes any invites matching the email
+      and inserts `board_members` rows.
+- [x] Owner sees pending invites in `MembersDialog` and can revoke.
 - **Acceptance:** owner invites a stranger by email → stranger clicks magic link → lands on the
       board with no extra step.
 
@@ -144,9 +147,9 @@ The "your data, your board" pitch needs proof points.
 - **Acceptance:** the README "your data, your Supabase" claim is backed by a one-click export.
 
 ### 16. Mobile board view
-- [ ] Breakpoint: < 768px renders one column at a time with a swipe carousel and a column picker.
-- [ ] Tap card → modal full-screen. Long-press → move-to-column sheet.
-- [ ] Drag is *not* the primary interaction on mobile; the move sheet is.
+- [x] Breakpoint: < 768px renders one column at a time with a scrollable column picker.
+- [x] Tap card → modal. Per-card ◀ ▶ controls move it between columns on touch.
+- [x] Drag is *not* the primary interaction on mobile; the ◀ ▶ buttons are.
 - **Acceptance:** the board is usable one-handed on a phone for triage.
 
 ### 17. Dark mode

@@ -51,11 +51,47 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Keyboard focus is the Pin — visible, never on body text colour. */
+/* Keyboard focus is the Pin — visible, never on body text colour.
+   Buttons, links and other controls keep the crisp pin outline. */
 :focus-visible {
   outline: 2px solid var(--pin);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Form fields never show the hard red pin outline — it reads as an error and
+   is too loud for everyday typing. Borderless inline editors (card title,
+   composers, search bars) rely on the caret; framed fields get a soft ring. */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+}
+
+/* Framed inputs (Tailwind's `.border`) get a calm, neutral focus ring. */
+input.border:focus,
+input.border:focus-visible,
+textarea.border:focus,
+textarea.border:focus-visible,
+select.border:focus,
+select.border:focus-visible {
+  border-color: color-mix(in srgb, var(--ink) 28%, var(--hairline));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--slate) 22%, transparent);
+}
+
+/* Borderless form controls (card title, composers, search, the template
+   select) still need a visible keyboard-focus indicator. Give them a calm
+   neutral ring — never the loud red pin. Mouse focus on text fields keeps the
+   quiet caret-only look; :focus-visible only fires for keyboard/programmatic
+   focus per the browser heuristic. */
+input:not(.border):focus-visible,
+textarea:not(.border):focus-visible,
+select:not(.border):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 30%, var(--hairline));
+  outline-offset: 1px;
 }
 
 ::-webkit-scrollbar {

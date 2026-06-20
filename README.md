@@ -122,8 +122,9 @@ to the Supabase redirect allow-list.
 
 - A person only ever sees boards they're a member of — enforced in Postgres by RLS keyed on the
   `board_members` table, not in the app. Even a direct API call can't read another team's board.
-- The board owner adds teammates by email under the **members** button. The teammate must sign in
-  once first so their account (`profiles` row) exists.
+- The board owner adds teammates by email under the **members** button. If the teammate already has
+  an account they join instantly; otherwise the invite is held and applied automatically the first
+  time they sign in. Owners can see and revoke pending invites in the same dialog.
 - Profiles are readable only by yourself and people you **share a board with** (enforced by a
   `SECURITY DEFINER` helper), so the user directory isn't exposed to everyone who signs up.
 

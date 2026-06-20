@@ -11,14 +11,18 @@ async function db() {
 
 // ---------- Boards ----------
 
-export async function createBoard(name: string) {
+// Returns the new board id (or an error message) rather than redirecting.
+// `redirect()` thrown from a Server Action is swallowed when the action is
+// awaited inside a React `useTransition` — the navigation never happens, which
+// is why board creation appeared to "do nothing". Callers navigate client-side.
+export async function createBoard(name: string): Promise<{ id?: string; error?: string }> {
   const supabase = await db();
   const { data, error } = await supabase.rpc("create_board", {
     board_name: name.trim() || "Untitled board",
   });
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath("/boards");
-  redirect(`/boards/${data}`);
+  return { id: data as string };
 }
 
 export async function renameBoard(boardId: string, name: string) {
@@ -37,12 +41,30 @@ export async function deleteBoard(boardId: string) {
 
 // ---------- Members ----------
 
-export async function addMember(boardId: string, email: string) {
+export async function addMember(
+  boardId: string,
+  email: string
+): Promise<{ error: string | null; status?: "added" | "invited" }> {
   const supabase = await db();
-  const { error } = await supabase.rpc("add_board_member", {
+  const { data, error } = await supabase.rpc("add_board_member", {
     board: boardId,
     member_email: email.trim(),
   });
+  if (error) return { error: error.message };
+  revalidatePath(`/boards/${boardId}`);
+  return { error: null, status: (data as "added" | "invited") ?? "added" };
+}
+
+export async function revokeInvite(
+  boardId: string,
+  email: string
+): Promise<{ error: string | null }> {
+  const supabase = await db();
+  const { error } = await supabase
+    .from("board_invites")
+    .delete()
+    .eq("board_id", boardId)
+    .eq("email", email.toLowerCase());
   if (error) return { error: error.message };
   revalidatePath(`/boards/${boardId}`);
   return { error: null };
@@ -175,12 +197,15 @@ export async function exportBoardData(boardId: string) {
 
 // ---------- Board templates ----------
 
-export async function createBoardFromTemplate(name: string, template: string) {
+export async function createBoardFromTemplate(
+  name: string,
+  template: string
+): Promise<{ id?: string; error?: string }> {
   const supabase = await db();
   const { data: boardId, error } = await supabase.rpc("create_board", {
     board_name: name.trim() || "Untitled board",
   });
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
 
   const templates: Record<string, string[]> = {
     engineering: ["Backlog", "Up Next", "In Progress", "In Review", "Done"],
@@ -201,5 +226,5 @@ export async function createBoardFromTemplate(name: string, template: string) {
   }
 
   revalidatePath("/boards");
-  redirect(`/boards/${boardId}`);
+  return { id: boardId as string };
 }

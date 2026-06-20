@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import { createBoard, createBoardFromTemplate } from "@/lib/actions";
 import { tack } from "@/lib/theme";
@@ -22,9 +23,11 @@ export default function BoardsHome({
   boards: BoardTile[];
   me: { name: string | null; email: string | null };
 }) {
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("default");
+  const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -49,15 +52,20 @@ export default function BoardsHome({
   }, []);
 
   const submit = () => {
-    if (!name.trim()) return;
+    if (!name.trim() || pending) return;
+    setError(null);
     start(async () => {
-      if (template === "default") {
-        await createBoard(name.trim());
-      } else {
-        await createBoardFromTemplate(name.trim(), template);
+      const res =
+        template === "default"
+          ? await createBoard(name.trim())
+          : await createBoardFromTemplate(name.trim(), template);
+      if (res?.error || !res?.id) {
+        setError(res?.error ?? "Couldn't create the board. Try again.");
+        return;
       }
       setName("");
       setAdding(false);
+      router.push(`/boards/${res.id}`);
     });
   };
 
@@ -123,10 +131,10 @@ export default function BoardsHome({
 
             {adding ? (
               <div
-                className="rounded-xl p-4 flex flex-col gap-3"
+                className="rounded-xl p-4 flex flex-col gap-3 shadow-sm"
                 style={{
                   background: tack.surface,
-                  border: `1px solid ${tack.pin}`,
+                  border: `1px solid ${tack.hairline}`,
                   minHeight: 160,
                 }}
               >
@@ -169,11 +177,16 @@ export default function BoardsHome({
                     style={{ color: tack.slate }}
                   />
                 </div>
+                {error && (
+                  <p className="text-xs" style={{ color: tack.pin }}>
+                    {error}
+                  </p>
+                )}
                 <div className="flex gap-2 mt-auto">
                   <button
                     onClick={submit}
-                    disabled={pending}
-                    className="text-sm px-3 py-1.5 rounded-md text-white font-medium disabled:opacity-60"
+                    disabled={pending || !name.trim()}
+                    className="text-sm px-3 py-1.5 rounded-md text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ background: tack.pin }}
                   >
                     {pending ? "Creating…" : "Create"}
@@ -183,6 +196,7 @@ export default function BoardsHome({
                       setAdding(false);
                       setName("");
                       setTemplate("default");
+                      setError(null);
                     }}
                     className="text-sm px-3 py-1.5 rounded-md"
                     style={{ color: tack.slate }}

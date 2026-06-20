@@ -50,6 +50,7 @@ import CommandPalette from "./CommandPalette";
 import ExportButton from "./ExportButton";
 import Avatar from "./Avatar";
 import TopBar from "./TopBar";
+import { useToast } from "./Toast";
 
 const tmp = () => "tmp_" + Math.random().toString(36).slice(2, 9);
 
@@ -87,13 +88,27 @@ export default function Board({
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Fired when ?card=<id> points at a card we don't have. Auto-clears.
   const [cardNotFound, setCardNotFound] = useState<string | null>(null);
+  // < 768px renders one column at a time with a picker; drag is not primary,
+  // the ◀ ▶ buttons are. Gated in JS (not CSS) so only one column tree mounts —
+  // mounting both would register duplicate dnd-kit ids.
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileColId, setMobileColId] = useState<string | null>(null);
   const dragFrom = useRef<string | null>(null);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // ---- URL state (single source of truth for shareable view) ----
   // `editing`, filters, and the open card live in the query string so links
   // round-trip cleanly. User actions push via `setParam`; effects below react.
   const router = useRouter();
+  const toast = useToast();
   const pathname = usePathname();
   const sp = useSearchParams();
 
@@ -451,6 +466,11 @@ export default function Board({
   const visibleCardsIn = (colId: string) => cardsIn(colId).filter(matchesFilters);
   const visibleCount = cards.filter(matchesFilters).length;
 
+  // Active column for the single-column mobile view; falls back to the first
+  // column if the selected one was deleted.
+  const mobileCol = columns.find((c) => c.id === mobileColId) ?? columns[0] ?? null;
+  const mobileColIndex = mobileCol ? columns.findIndex((c) => c.id === mobileCol.id) : -1;
+
   // ---- keyboard shortcuts ----
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -498,13 +518,15 @@ export default function Board({
     return () => window.removeEventListener("keydown", onKey);
   }, [columns, editing, membersOpen, helpOpen, paletteOpen, setEditing]);
 
-  // New-board trigger fired from the palette. Tiny prompt; the action handles
-  // the redirect to the freshly-created board.
-  const newBoardFromPalette = useCallback(() => {
+  // New-board trigger fired from the palette. Tiny prompt; navigate to the
+  // freshly-created board once the action returns its id.
+  const newBoardFromPalette = useCallback(async () => {
     const name = window.prompt("Name this board");
     if (!name?.trim()) return;
-    createBoard(name.trim());
-  }, []);
+    const res = await createBoard(name.trim());
+    if (res?.id) router.push(`/boards/${res.id}`);
+    else toast(res?.error ?? "Couldn't create the board", "error");
+  }, [router, toast]);
 
   const centerSlot = (
     <div className="flex items-center gap-2 min-w-0">
@@ -521,7 +543,7 @@ export default function Board({
           }}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           className="text-base font-display outline-none border-b bg-transparent min-w-0"
-          style={{ borderColor: tack.pin, fontWeight: 600, color: tack.ink }}
+          style={{ borderColor: tack.hairline, fontWeight: 600, color: tack.ink }}
         />
       ) : (
         <button
@@ -648,21 +670,97 @@ export default function Board({
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex-1 overflow-x-auto overflow-y-hidden">
-          <div className="flex gap-4 p-5 h-full items-start" style={{ minWidth: "min-content" }}>
-            <SortableContext
-              items={columns.map((c) => `colsort:${c.id}`)}
-              strategy={horizontalListSortingStrategy}
+        {!isMobile ? (
+          <div className="flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="flex gap-4 p-5 h-full items-start" style={{ minWidth: "min-content" }}>
+              <SortableContext
+                items={columns.map((c) => `colsort:${c.id}`)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {columns.map((col, i) => (
+                  <Column
+                    key={col.id}
+                    column={col}
+                    cards={visibleCardsIn(col.id)}
+                    members={members}
+                    boardPrefix={boardPrefix}
+                    isFirstCol={i === 0}
+                    isLastCol={i === columns.length - 1}
+                    onAddCard={addCard}
+                    onCardClick={setEditing}
+                    onMoveCard={moveCard}
+                    onPatchCard={patchCard}
+                    currentUserId={currentUserId}
+                    onRename={renameColumn}
+                    onDelete={deleteColumn}
+                    isComposing={composingCol === col.id}
+                    onOpenCompose={() => setComposingCol(col.id)}
+                    onCloseCompose={() => setComposingCol((c) => (c === col.id ? null : c))}
+                  />
+                ))}
+              </SortableContext>
+
+              <button
+                onClick={addColumn}
+                className="w-72 shrink-0 rounded-xl flex items-center justify-center gap-2 text-sm py-3 border border-dashed hover:bg-black/[0.03]"
+                style={{ borderColor: tack.hairline, color: tack.slate }}
+              >
+                <Plus size={15} /> Add stage
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Column picker — horizontally scrollable chips. */}
+            <div
+              className="flex gap-2 overflow-x-auto px-4 py-3 shrink-0"
+              style={{ borderBottom: `1px solid ${tack.hairline}` }}
             >
-              {columns.map((col, i) => (
+              {columns.map((col) => {
+                const active = mobileCol?.id === col.id;
+                const count = visibleCardsIn(col.id).length;
+                return (
+                  <button
+                    key={col.id}
+                    onClick={() => setMobileColId(col.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0"
+                    style={{
+                      background: active ? tack.ink : tack.surface,
+                      color: active ? tack.surface : tack.ink,
+                      border: `1px solid ${active ? tack.ink : tack.hairline}`,
+                    }}
+                  >
+                    {col.title}
+                    <span
+                      className="font-meta text-[11px]"
+                      style={{ color: active ? tack.surface : tack.slate }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={addColumn}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0 border border-dashed"
+                style={{ borderColor: tack.hairline, color: tack.slate }}
+                aria-label="Add stage"
+              >
+                <Plus size={14} /> Stage
+              </button>
+            </div>
+
+            {/* The single active column, full width. */}
+            <div className="flex-1 min-h-0 px-4 pt-3 pb-4">
+              {mobileCol && (
                 <Column
-                  key={col.id}
-                  column={col}
-                  cards={visibleCardsIn(col.id)}
+                  key={mobileCol.id}
+                  column={mobileCol}
+                  cards={visibleCardsIn(mobileCol.id)}
                   members={members}
                   boardPrefix={boardPrefix}
-                  isFirstCol={i === 0}
-                  isLastCol={i === columns.length - 1}
+                  isFirstCol={mobileColIndex === 0}
+                  isLastCol={mobileColIndex === columns.length - 1}
                   onAddCard={addCard}
                   onCardClick={setEditing}
                   onMoveCard={moveCard}
@@ -670,22 +768,15 @@ export default function Board({
                   currentUserId={currentUserId}
                   onRename={renameColumn}
                   onDelete={deleteColumn}
-                  isComposing={composingCol === col.id}
-                  onOpenCompose={() => setComposingCol(col.id)}
-                  onCloseCompose={() => setComposingCol((c) => (c === col.id ? null : c))}
+                  isComposing={composingCol === mobileCol.id}
+                  onOpenCompose={() => setComposingCol(mobileCol.id)}
+                  onCloseCompose={() => setComposingCol((c) => (c === mobileCol.id ? null : c))}
+                  fullWidth
                 />
-              ))}
-            </SortableContext>
-
-            <button
-              onClick={addColumn}
-              className="w-72 shrink-0 rounded-xl flex items-center justify-center gap-2 text-sm py-3 border border-dashed hover:bg-black/[0.03]"
-              style={{ borderColor: tack.hairline, color: tack.slate }}
-            >
-              <Plus size={15} /> Add stage
-            </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <DragOverlay>
           {activeCard ? (

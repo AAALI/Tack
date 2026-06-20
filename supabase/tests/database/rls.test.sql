@@ -10,7 +10,7 @@
 -- =====================================================================
 
 begin;
-select plan(13);
+select plan(21);
 
 -- ---------- Personas ----------
 -- The new-user trigger (handle_new_user) auto-populates public.profiles.
@@ -93,6 +93,17 @@ select is(
   'assign_card_number trigger assigns 1..N per board'
 );
 
+-- ---------- Activity log: insert trigger writes a 'created' event per card ----------
+select is(
+  (select count(*)::int from public.card_events
+    where board_id = (
+      select id from public.boards
+       where created_by = '11111111-1111-1111-1111-111111111111'
+    ) and kind = 'created'),
+  3,
+  'log_card_event trigger records a created event for each new card'
+);
+
 -- ---------- Alice adds Bob as a member by email ----------
 do $$
 declare bid uuid;
@@ -109,6 +120,43 @@ select is(
   'add_board_member adds Bob to the board'
 );
 
+-- ---------- Email-invite flow ----------
+-- Inviting an email with no account records a pending invite…
+select is(
+  (select public.add_board_member(
+     (select id from public.boards
+        where created_by = '11111111-1111-1111-1111-111111111111'),
+     'dave@tack.test')),
+  'invited',
+  'add_board_member records a pending invite for an email without an account'
+);
+
+select is(
+  (select count(*)::int from public.board_invites where email = 'dave@tack.test'),
+  1,
+  'a pending board_invites row exists for the unknown email'
+);
+
+-- …and Dave's first sign-in consumes it (handle_new_user trigger).
+reset role;
+insert into auth.users (id, email)
+  values ('44444444-4444-4444-4444-444444444444', 'dave@tack.test');
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+select is(
+  (select count(*)::int from public.board_members
+    where user_id = '44444444-4444-4444-4444-444444444444'),
+  1,
+  'first sign-in consumes the invite and joins Dave to the board'
+);
+
+select is(
+  (select count(*)::int from public.board_invites where email = 'dave@tack.test'),
+  0,
+  'the consumed invite is deleted'
+);
+
 -- ---------- Carol (non-member) is denied everything ----------
 set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
 
@@ -122,6 +170,20 @@ select is(
   (select count(*)::int from public.cards),
   0,
   'Non-member cannot SELECT any card'
+);
+
+select is(
+  (select count(*)::int from public.card_events),
+  0,
+  'Non-member cannot SELECT any card event'
+);
+
+select throws_ok(
+  $$ insert into public.card_events (card_id, board_id, kind)
+     values (gen_random_uuid(), gen_random_uuid(), 'created') $$,
+  '42501',
+  null,
+  'No one can INSERT card events through the API (trigger-only, no grant)'
 );
 
 select throws_ok(
