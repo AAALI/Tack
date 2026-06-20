@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · Tack",
   },
   description:
-    "Open-source Kanban that your team actually owns. Self-host it free on your own Supabase, or start on Tack Cloud — unlimited projects and members.",
+    "The calm, open-source Kanban for the rest of your company — marketing, ops, people, finance, and the teams that don't live in an engineering sprint. Self-host it free on your own Supabase, or start on Tack Cloud.",
   applicationName: "Tack",
   keywords: [
     "Kanban",
@@ -55,14 +55,14 @@ export const metadata: Metadata = {
     siteName: "Tack",
     title: "Tack — The board your team actually owns",
     description:
-      "Open-source Kanban. Self-host it free on your own Supabase, or start on Tack Cloud — unlimited projects and members.",
+      "The calm, open-source Kanban for the rest of your company — marketing, ops, people, and the teams that don't live in an engineering sprint. Self-host it free, or start on Tack Cloud.",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "Tack — The board your team actually owns",
     description:
-      "Open-source Kanban. Self-host it free, or start on Tack Cloud — unlimited projects and members.",
+      "The calm, open-source Kanban for the rest of your company — not the engineering sprint. Self-host it free, or start on Tack Cloud.",
   },
   robots: {
     index: true,

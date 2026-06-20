@@ -2,9 +2,11 @@
 
 > Pin it. Move it. Done.
 
-Open-source, self-hostable Kanban for teams. One board per team, magic-link login, real-time, and
-your data in **your own** Supabase. Cards carry a human ID (`BRD-12`), a description, links, labels,
-an assignee, a due date, and a priority.
+Open-source, self-hostable Kanban for **the rest of your company** — marketing, ops, customer
+success, people, finance, design, agencies, and founders. The teams that think in pipelines and
+stages, not sprints and story points. One board per team, magic-link login, real-time, and your
+data in **your own** Supabase. Cards carry a human ID (`BRD-12`), a description, links, labels, an
+assignee, a due date, and a priority.
 
 **Stack:** Next.js 15 (App Router, React 19) · Supabase (Auth + Postgres + Realtime + RLS) ·
 Cloudflare Workers via OpenNext · dnd-kit · Tailwind v4. No paid tier needed at small-team scale.
@@ -24,6 +26,20 @@ guide below.
 
 Same code, same features either way. Start on the cloud and move to self-hosted later — your data
 exports cleanly.
+
+---
+
+## Who it's for
+
+Tack is for the parts of a company that don't live in an engineering sprint board — **marketing,
+operations, customer success, people/HR, finance, design, legal, agencies, and founders.** These
+teams think in **pipelines and stages**: campaigns, intake queues, hiring funnels, content
+calendars, client work. One board is one team — no nested projects, no permission matrices.
+
+Linear and Jira own the engineering sprint, and Tack won't try to. A small or eng-adjacent team can
+absolutely use it for bug intake, support triage, or a lightweight roadmap — it just won't ever grow
+story points, velocity charts, or git integration. See [`ROADMAP.md`](ROADMAP.md) for where it's
+headed (a non-engineering core, then a *calm, opt-in* AI layer) and what it deliberately leaves out.
 
 ---
 
