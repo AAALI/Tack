@@ -30,6 +30,7 @@ export default function Column({
   isComposing,
   onOpenCompose,
   onCloseCompose,
+  fullWidth = false,
 }: {
   column: TColumn;
   cards: TCard[];
@@ -49,6 +50,9 @@ export default function Column({
   isComposing: boolean;
   onOpenCompose: () => void;
   onCloseCompose: () => void;
+  /** Stretch to fill its container instead of the fixed 288px track. Used by
+   *  the single-column mobile view. */
+  fullWidth?: boolean;
 }) {
   // Make the column itself sortable along the horizontal axis. The drag handle
   // is the column header — see {...attributes} {...listeners} below.
@@ -94,7 +98,9 @@ export default function Column({
   return (
     <div
       ref={setSortableRef}
-      className="w-72 shrink-0 rounded-xl flex flex-col max-h-full transition-colors"
+      className={`${
+        fullWidth ? "w-full h-full" : "w-72 shrink-0 max-h-full"
+      } rounded-xl flex flex-col transition-colors`}
       style={{
         background: isOver ? tack.wash : "#EFEEE9",
         border: `1px solid ${isOver ? tack.pin : tack.hairline}`,
