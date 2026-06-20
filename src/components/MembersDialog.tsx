@@ -64,9 +64,16 @@ export default function MembersDialog({
   };
 
   const revoke = (inviteEmail: string) => {
+    const removed = invites.find((i) => i.email === inviteEmail);
     setInvites((prev) => prev.filter((i) => i.email !== inviteEmail));
     start(async () => {
-      await revokeInvite(boardId, inviteEmail);
+      const res = await revokeInvite(boardId, inviteEmail);
+      if (res?.error) {
+        // Restore the optimistically-removed invite so the UI matches the server.
+        if (removed) setInvites((prev) => [removed, ...prev.filter((i) => i.email !== inviteEmail)]);
+        toast(`Couldn't revoke invite for ${inviteEmail}`, "error");
+        return;
+      }
       toast(`Revoked invite for ${inviteEmail}`, "info");
     });
   };

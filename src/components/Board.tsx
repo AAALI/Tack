@@ -50,6 +50,7 @@ import CommandPalette from "./CommandPalette";
 import ExportButton from "./ExportButton";
 import Avatar from "./Avatar";
 import TopBar from "./TopBar";
+import { useToast } from "./Toast";
 
 const tmp = () => "tmp_" + Math.random().toString(36).slice(2, 9);
 
@@ -107,6 +108,7 @@ export default function Board({
   // `editing`, filters, and the open card live in the query string so links
   // round-trip cleanly. User actions push via `setParam`; effects below react.
   const router = useRouter();
+  const toast = useToast();
   const pathname = usePathname();
   const sp = useSearchParams();
 
@@ -523,7 +525,8 @@ export default function Board({
     if (!name?.trim()) return;
     const res = await createBoard(name.trim());
     if (res?.id) router.push(`/boards/${res.id}`);
-  }, [router]);
+    else toast(res?.error ?? "Couldn't create the board", "error");
+  }, [router, toast]);
 
   const centerSlot = (
     <div className="flex items-center gap-2 min-w-0">

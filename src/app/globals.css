@@ -82,6 +82,14 @@ select.border:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--slate) 22%, transparent);
 }
 
+/* A borderless <select> has no caret to signal focus, so keyboard users would
+   otherwise get nothing. Give it a calm neutral ring (never the red pin).
+   Text inputs/textareas intentionally rely on the caret, per above. */
+select:not(.border):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ink) 30%, var(--hairline));
+  outline-offset: 1px;
+}
+
 ::-webkit-scrollbar {
   height: 10px;
   width: 10px;

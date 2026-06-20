@@ -55,14 +55,19 @@ export async function addMember(
   return { error: null, status: (data as "added" | "invited") ?? "added" };
 }
 
-export async function revokeInvite(boardId: string, email: string) {
+export async function revokeInvite(
+  boardId: string,
+  email: string
+): Promise<{ error: string | null }> {
   const supabase = await db();
-  await supabase
+  const { error } = await supabase
     .from("board_invites")
     .delete()
     .eq("board_id", boardId)
     .eq("email", email.toLowerCase());
+  if (error) return { error: error.message };
   revalidatePath(`/boards/${boardId}`);
+  return { error: null };
 }
 
 export async function removeMember(boardId: string, userId: string) {

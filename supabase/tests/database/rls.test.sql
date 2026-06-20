@@ -10,7 +10,7 @@
 -- =====================================================================
 
 begin;
-select plan(20);
+select plan(21);
 
 -- ---------- Personas ----------
 -- The new-user trigger (handle_new_user) auto-populates public.profiles.

@@ -45,18 +45,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         role="status"
       >
         {toasts.map((t) => (
-          <ToastRow key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+          <ToastRow key={t.id} toast={t} dismiss={dismiss} />
         ))}
       </div>
     </ToastContext.Provider>
   );
 }
 
-function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastRow({ toast, dismiss }: { toast: Toast; dismiss: (id: number) => void }) {
+  const id = toast.id;
+  // dismiss is stable (useCallback) and id never changes for a given row, so the
+  // auto-dismiss timer is set once and isn't reset when other toasts mount.
   useEffect(() => {
-    const t = setTimeout(onDismiss, 4000);
+    const t = setTimeout(() => dismiss(id), 4000);
     return () => clearTimeout(t);
-  }, [onDismiss]);
+  }, [id, dismiss]);
 
   const accent =
     toast.kind === "error" ? tack.pin : toast.kind === "success" ? tack.pins[2] : tack.slate;
@@ -74,7 +77,7 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void })
       <Icon size={16} style={{ color: accent, flexShrink: 0, marginTop: 1 }} />
       <span className="flex-1 leading-snug">{toast.message}</span>
       <button
-        onClick={onDismiss}
+        onClick={() => dismiss(id)}
         className="p-0.5 rounded hover:bg-black/5 shrink-0"
         style={{ color: tack.slate }}
         aria-label="Dismiss"
