@@ -72,10 +72,12 @@ The product is launch-capable today. Already done:
 Cheap, non-negotiable hygiene that protects everything already shipped. Do this first; it unblocks
 confident iteration.
 
-### 1.1 RLS tests in CI
-- [ ] Commit `supabase/config.toml` (`supabase init`) and re-enable the `db` CI job
-      (`supabase start && supabase test db`) — today the pgTAP suite only runs locally.
-- [ ] PR template referencing `BUILD.md` §8 (RLS + migration + test conventions).
+### 1.1 RLS tests in CI ✅
+- [x] `db` CI job: bare Postgres 16 + pgTAP applies `tests/setup.sql` (Supabase scaffolding) then
+      the canonical `schema.sql`, and runs the pgTAP suite via `pg_prove`. (We test `schema.sql`
+      directly rather than `supabase test db` — migrations are deltas on top of it, not a
+      from-empty chain, so `schema.sql` is the honest unit under test.)
+- [x] PR template referencing `BUILD.md` §8 (RLS + migration + test conventions).
 - **Acceptance:** a PR that weakens an RLS policy fails CI *before* a human reviews it.
 
 ### 1.2 Optimistic concurrency on card edits
@@ -258,7 +260,7 @@ The answer is no unless the rest of the roadmap is done first — and several ar
 
 ## Testing checklist (keep current)
 
-- [ ] pgTAP: per-table RLS (member read, non-member denied, owner-only writes) — running in CI.
+- [x] pgTAP: per-table RLS (member read, non-member denied, owner-only writes) — running in CI.
 - [ ] pgTAP: `create_board`, `add_board_member`, intake/recurring/comment RPCs enforce ownership.
 - [ ] Playwright (or Vitest + RTL): magic-link redirect, board create, card CRUD, drag persist,
       filter URL round-trip, deep-link card open, calendar drag, intake-form submit.
