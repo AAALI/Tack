@@ -20,7 +20,7 @@ import {
   horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { Plus, Users, Pencil, X } from "lucide-react";
+import { Plus, Users, Pencil, X, LayoutGrid, List } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   addColumn as addColumnAction,
@@ -44,6 +44,7 @@ import {
   type Priority,
 } from "@/lib/types";
 import Column from "./Column";
+import ListView, { type ListGroup, type ListSort } from "./ListView";
 import CardModal from "./CardModal";
 import MembersDialog from "./MembersDialog";
 import CommandPalette from "./CommandPalette";
@@ -151,6 +152,13 @@ export default function Board({
   const filterPriority = sp.get("priority") as Priority | null;
   const filterLabel = sp.get("label");
   const filterDue = sp.get("due");
+
+  // View state lives in the URL too. Default to the board, except on phones
+  // where a single-column list reads better than a horizontal board.
+  const viewParam = sp.get("view") as "board" | "list" | null;
+  const view: "board" | "list" = viewParam ?? (isMobile ? "list" : "board");
+  const listGroup = (sp.get("group") as ListGroup | null) ?? "status";
+  const listSort = (sp.get("sort") as ListSort | null) ?? "manual";
 
   // Derive the modal-target card from the URL. Falls back to null if the id
   // was deleted under us; the effect below flags that to the user.
@@ -573,7 +581,9 @@ export default function Board({
     return true;
   };
   const visibleCardsIn = (colId: string) => cardsIn(colId).filter(matchesFilters);
-  const visibleCount = cards.filter(matchesFilters).length;
+  // Flat, filtered, board-ordered list — the list view groups/sorts from this.
+  const visibleCards = cards.filter(matchesFilters);
+  const visibleCount = visibleCards.length;
 
   // Active column for the single-column mobile view; falls back to the first
   // column if the selected one was deleted.
@@ -605,6 +615,13 @@ export default function Board({
         return;
       }
       if (inField) return;
+      // V — toggle between board and list view.
+      if (e.key === "v" || e.key === "V") {
+        e.preventDefault();
+        const nextView = view === "list" ? "board" : "list";
+        setParam("view", nextView === (isMobile ? "list" : "board") ? null : nextView);
+        return;
+      }
       // C or N — new card in the first column.
       if (e.key === "c" || e.key === "C" || e.key === "n" || e.key === "N") {
         const first = columns[0];
@@ -625,7 +642,7 @@ export default function Board({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [columns, editing, membersOpen, helpOpen, paletteOpen, setEditing]);
+  }, [columns, editing, membersOpen, helpOpen, paletteOpen, setEditing, view, isMobile, setParam]);
 
   // New-board trigger fired from the palette. Tiny prompt; navigate to the
   // freshly-created board once the action returns its id.
@@ -696,11 +713,16 @@ export default function Board({
     <div className="h-full flex flex-col" style={{ background: tack.paper, color: tack.ink }}>
       <TopBar me={me} centerSlot={centerSlot} rightSlot={rightSlot} />
 
-      {/* filter chips */}
+      {/* view switch + filter chips */}
       <div
         className="flex items-center gap-2 px-5 py-2 overflow-x-auto"
         style={{ borderBottom: `1px solid ${tack.hairline}`, background: tack.surface }}
       >
+        <ViewSwitch
+          view={view}
+          onChange={(v) => setParam("view", v === (isMobile ? "list" : "board") ? null : v)}
+        />
+        <span className="shrink-0 w-px h-5" style={{ background: tack.hairline }} aria-hidden />
         <span
           className="text-[11px] font-meta uppercase tracking-[0.08em] shrink-0"
           style={{ color: tack.slate }}
@@ -760,6 +782,34 @@ export default function Board({
             <X size={12} /> Clear
           </button>
         )}
+
+        {view === "list" && (
+          <>
+            <span className="shrink-0 w-px h-5" style={{ background: tack.hairline }} aria-hidden />
+            <FilterSelect
+              label="Group"
+              value={listGroup}
+              onChange={(v) => setParam("group", v === "status" ? null : v)}
+              options={[
+                { value: "status", label: "Status" },
+                { value: "assignee", label: "Assignee" },
+                { value: "priority", label: "Priority" },
+                { value: "due", label: "Due" },
+              ]}
+            />
+            <FilterSelect
+              label="Sort"
+              value={listSort}
+              onChange={(v) => setParam("sort", v === "manual" ? null : v)}
+              options={[
+                { value: "manual", label: "Manual" },
+                { value: "due", label: "Due date" },
+                { value: "priority", label: "Priority" },
+                { value: "created", label: "Newest" },
+              ]}
+            />
+          </>
+        )}
         {cardNotFound && (
           <span
             className="ml-auto font-meta text-[11px] uppercase tracking-[0.08em] shrink-0"
@@ -779,7 +829,20 @@ export default function Board({
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        {!isMobile ? (
+        {view === "list" ? (
+          <ListView
+            columns={columns}
+            cards={visibleCards}
+            members={members}
+            boardPrefix={boardPrefix}
+            currentUserId={currentUserId}
+            group={listGroup}
+            sort={listSort}
+            onCardClick={setEditing}
+            onPatchCard={patchCard}
+            onAddCard={addCard}
+          />
+        ) : !isMobile ? (
           <div className="flex-1 overflow-x-auto overflow-y-hidden">
             <div className="flex gap-4 p-5 h-full items-start" style={{ minWidth: "min-content" }}>
               <SortableContext
@@ -975,6 +1038,45 @@ export default function Board({
 }
 
 // -------- Quick-filter dropdown --------
+// Board ⇄ List segmented switch. Keeps the choice in the URL via the parent.
+function ViewSwitch({
+  view,
+  onChange,
+}: {
+  view: "board" | "list";
+  onChange: (v: "board" | "list") => void;
+}) {
+  return (
+    <div
+      className="flex shrink-0 rounded-full p-0.5"
+      style={{ background: tack.wash, border: `1px solid ${tack.hairline}` }}
+      role="group"
+      aria-label="View"
+    >
+      {(["board", "list"] as const).map((v) => {
+        const active = view === v;
+        return (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full capitalize"
+            style={{
+              background: active ? tack.surface : "transparent",
+              color: active ? tack.ink : tack.slate,
+              fontWeight: active ? 600 : 500,
+              boxShadow: active ? "0 1px 2px rgba(27,27,31,0.06)" : "none",
+            }}
+            aria-pressed={active}
+          >
+            {v === "board" ? <LayoutGrid size={13} /> : <List size={13} />}
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function FilterSelect({
   label,
   value,
