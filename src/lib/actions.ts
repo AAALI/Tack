@@ -141,12 +141,26 @@ export type CardPatch = {
   links?: CardLink[];
 };
 
-export async function updateCard(_boardId: string, cardId: string, patch: CardPatch) {
+// Optimistic concurrency: when `expectedUpdatedAt` is supplied (modal edits),
+// the write only lands if the row still carries that version. A 0-row result
+// means someone else saved first — we report a conflict instead of clobbering.
+// Inline board actions omit the guard and just overwrite (realtime reconciles).
+export async function updateCard(
+  _boardId: string,
+  cardId: string,
+  patch: CardPatch,
+  expectedUpdatedAt?: string | null
+): Promise<{ conflict: boolean; updated_at?: string }> {
   const supabase = await db();
-  await supabase
+  let q = supabase
     .from("cards")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", cardId);
+  if (expectedUpdatedAt) q = q.eq("updated_at", expectedUpdatedAt);
+  const { data, error } = await q.select("updated_at").maybeSingle();
+  if (error) return { conflict: false }; // transient/other — let realtime settle
+  if (expectedUpdatedAt && !data) return { conflict: true };
+  return { conflict: false, updated_at: data?.updated_at };
 }
 
 export async function deleteCard(_boardId: string, cardId: string) {

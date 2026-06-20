@@ -96,6 +96,16 @@ export default function Board({
   const dragFrom = useRef<string | null>(null);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ---- Optimistic concurrency for the card modal ----
+  // The modal edits against a base version captured when it opened. Writes are
+  // serialised so our own rapid edits thread the new version; if someone else
+  // saved first, the guarded write affects 0 rows and we freeze with a banner.
+  const [editConflict, setEditConflict] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0); // bumped to re-seed the modal
+  const editBaseRef = useRef<string | null>(null);
+  const editConflictRef = useRef(false);
+  const editWriteChain = useRef<Promise<void>>(Promise.resolve());
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     const update = () => setIsMobile(mq.matches);
@@ -374,10 +384,69 @@ export default function Board({
     [boardId]
   );
 
+  // Capture the base version when a card is opened in the modal, and reset any
+  // prior conflict. Keyed on the card id so it doesn't re-run on every save.
+  useEffect(() => {
+    editConflictRef.current = false;
+    setEditConflict(false);
+    editBaseRef.current = editing?.updated_at ?? null;
+    editWriteChain.current = Promise.resolve();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id]);
+
   const saveCard = (patch: CardPatch) => {
     if (!editing) return;
-    patchCard(editing.id, patch);
+    const id = editing.id;
+    // Optimistic update is unconditional so the UI stays responsive.
+    setCards((prev) => prev.map((c) => (c.id === id ? ({ ...c, ...patch } as Card) : c)));
+    if (id.startsWith("tmp_")) return; // not persisted yet; nothing to guard
+
+    // Serialise writes per modal session: each one waits for the previous so it
+    // reads the freshly-advanced base version and never conflicts with itself.
+    editWriteChain.current = editWriteChain.current.then(async () => {
+      if (editConflictRef.current) return; // frozen until the user reloads
+      const res = await updateCard(boardId, id, patch, editBaseRef.current);
+      if (res.conflict) {
+        editConflictRef.current = true;
+        setEditConflict(true);
+        refetch(); // pull the other edit into state so Reload shows the latest
+        return;
+      }
+      if (res.updated_at) {
+        editBaseRef.current = res.updated_at;
+        setCards((prev) =>
+          prev.map((c) => (c.id === id ? ({ ...c, updated_at: res.updated_at! } as Card) : c))
+        );
+      }
+    });
   };
+
+  // "Reload to edit": pull the latest row, re-seed the modal from it (via a key
+  // bump), and clear the conflict so editing resumes against the new version.
+  const reloadEditingCard = useCallback(async () => {
+    if (!editing) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("cards")
+      .select("*")
+      .eq("id", editing.id)
+      .maybeSingle();
+    if (!data) {
+      // The card was deleted out from under us.
+      setEditing(null);
+      setParam("card", null);
+      return;
+    }
+    const fresh = data as Card;
+    setCards((prev) => prev.map((c) => (c.id === fresh.id ? fresh : c)));
+    editBaseRef.current = fresh.updated_at;
+    editConflictRef.current = false;
+    editWriteChain.current = Promise.resolve();
+    setEditConflict(false);
+    setEditing(fresh);
+    setReloadNonce((n) => n + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   const removeCard = () => {
     if (!editing) return;
@@ -828,9 +897,12 @@ export default function Board({
 
       {editing && (
         <CardModal
+          key={`${editing.id}:${reloadNonce}`}
           card={cards.find((c) => c.id === editing.id) ?? editing}
           members={members}
           boardPrefix={boardPrefix}
+          conflict={editConflict}
+          onReload={reloadEditingCard}
           onSave={saveCard}
           onDelete={removeCard}
           onClose={() => setEditing(null)}

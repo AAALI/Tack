@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Trash2, Plus, ExternalLink, Link2 } from "lucide-react";
+import { X, Trash2, Plus, ExternalLink, Link2, AlertCircle } from "lucide-react";
 import {
   THEME,
   tack,
@@ -35,6 +35,8 @@ export default function CardModal({
   card,
   members,
   boardPrefix,
+  conflict = false,
+  onReload,
   onSave,
   onDelete,
   onClose,
@@ -42,6 +44,8 @@ export default function CardModal({
   card: TCard;
   members: Member[];
   boardPrefix: string;
+  conflict?: boolean;
+  onReload?: () => void;
   onSave: (patch: CardPatch) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -107,7 +111,8 @@ export default function CardModal({
     }
   };
 
-  const commit = (extra: CardPatch = {}) =>
+  const commit = (extra: CardPatch = {}) => {
+    if (conflict) return; // frozen until the user reloads — don't clobber the other edit
     onSave({
       title: title.trim() || "Untitled",
       description,
@@ -118,6 +123,7 @@ export default function CardModal({
       links: links.filter((l) => l.url.trim()),
       ...extra,
     });
+  };
 
   const close = () => {
     commit();
@@ -136,6 +142,25 @@ export default function CardModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5">
+          {conflict && (
+            <div
+              className="flex items-center gap-2 mb-4 rounded-xl px-3 py-2.5 text-sm"
+              style={{ background: tack.wash, border: `1px solid ${tack.pin}`, color: tack.ink }}
+              role="alert"
+            >
+              <AlertCircle size={16} style={{ color: tack.pin, flexShrink: 0 }} />
+              <span className="flex-1 leading-snug">
+                This card changed somewhere else. Reload to pick up the latest before editing.
+              </span>
+              <button
+                onClick={onReload}
+                className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-white"
+                style={{ background: tack.pin }}
+              >
+                Reload
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-1">
             {card.number !== null && (
               <p
