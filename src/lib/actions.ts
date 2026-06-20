@@ -150,7 +150,7 @@ export async function updateCard(
   cardId: string,
   patch: CardPatch,
   expectedUpdatedAt?: string | null
-): Promise<{ conflict: boolean; updated_at?: string }> {
+): Promise<{ conflict: boolean; updated_at?: string; error?: string }> {
   const supabase = await db();
   let q = supabase
     .from("cards")
@@ -158,7 +158,7 @@ export async function updateCard(
     .eq("id", cardId);
   if (expectedUpdatedAt) q = q.eq("updated_at", expectedUpdatedAt);
   const { data, error } = await q.select("updated_at").maybeSingle();
-  if (error) return { conflict: false }; // transient/other — let realtime settle
+  if (error) return { conflict: false, error: error.message };
   if (expectedUpdatedAt && !data) return { conflict: true };
   return { conflict: false, updated_at: data?.updated_at };
 }
