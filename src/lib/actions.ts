@@ -41,15 +41,28 @@ export async function deleteBoard(boardId: string) {
 
 // ---------- Members ----------
 
-export async function addMember(boardId: string, email: string) {
+export async function addMember(
+  boardId: string,
+  email: string
+): Promise<{ error: string | null; status?: "added" | "invited" }> {
   const supabase = await db();
-  const { error } = await supabase.rpc("add_board_member", {
+  const { data, error } = await supabase.rpc("add_board_member", {
     board: boardId,
     member_email: email.trim(),
   });
   if (error) return { error: error.message };
   revalidatePath(`/boards/${boardId}`);
-  return { error: null };
+  return { error: null, status: (data as "added" | "invited") ?? "added" };
+}
+
+export async function revokeInvite(boardId: string, email: string) {
+  const supabase = await db();
+  await supabase
+    .from("board_invites")
+    .delete()
+    .eq("board_id", boardId)
+    .eq("email", email.toLowerCase());
+  revalidatePath(`/boards/${boardId}`);
 }
 
 export async function removeMember(boardId: string, userId: string) {

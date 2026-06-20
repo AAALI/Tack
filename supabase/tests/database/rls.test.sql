@@ -10,7 +10,7 @@
 -- =====================================================================
 
 begin;
-select plan(16);
+select plan(20);
 
 -- ---------- Personas ----------
 -- The new-user trigger (handle_new_user) auto-populates public.profiles.
@@ -118,6 +118,43 @@ select is(
     where user_id = '22222222-2222-2222-2222-222222222222'),
   1,
   'add_board_member adds Bob to the board'
+);
+
+-- ---------- Email-invite flow ----------
+-- Inviting an email with no account records a pending invite…
+select is(
+  (select public.add_board_member(
+     (select id from public.boards
+        where created_by = '11111111-1111-1111-1111-111111111111'),
+     'dave@tack.test')),
+  'invited',
+  'add_board_member records a pending invite for an email without an account'
+);
+
+select is(
+  (select count(*)::int from public.board_invites where email = 'dave@tack.test'),
+  1,
+  'a pending board_invites row exists for the unknown email'
+);
+
+-- …and Dave's first sign-in consumes it (handle_new_user trigger).
+reset role;
+insert into auth.users (id, email)
+  values ('44444444-4444-4444-4444-444444444444', 'dave@tack.test');
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+select is(
+  (select count(*)::int from public.board_members
+    where user_id = '44444444-4444-4444-4444-444444444444'),
+  1,
+  'first sign-in consumes the invite and joins Dave to the board'
+);
+
+select is(
+  (select count(*)::int from public.board_invites where email = 'dave@tack.test'),
+  0,
+  'the consumed invite is deleted'
 );
 
 -- ---------- Carol (non-member) is denied everything ----------
