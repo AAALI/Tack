@@ -157,9 +157,10 @@ function LandingPage() {
               marginBottom: 36,
             }}
           >
-            A focused Kanban board with no busywork and no lock-in. Run it free
-            on your own Supabase, or start on Tack Cloud in seconds — same
-            product, your choice.
+            The calm Kanban for the rest of your company — marketing, ops,
+            people, finance, and the teams that don&apos;t live in an
+            engineering sprint. Own your data on your own Supabase, or start on
+            Tack Cloud in seconds.
           </p>
 
           <div
@@ -266,6 +267,58 @@ function LandingPage() {
           ))}
         </div>
       </div>
+
+      {/* Who it's for */}
+      <section style={{ maxWidth: MAX, margin: "0 auto", padding: "104px 24px 0" }}>
+        <div style={{ textAlign: "center" }}>
+          <Eyebrow center>Who it&apos;s for</Eyebrow>
+          <SectionHeading center>Built for the teams sprint tools forget.</SectionHeading>
+          <SectionSub center>
+            Tack speaks in pipelines and stages — campaigns, intake queues, hiring funnels, content
+            calendars, client work — not sprints, story points, or burndown. Engineering has Linear.
+            This is the board for everyone else.
+          </SectionSub>
+        </div>
+
+        <div
+          style={{
+            marginTop: 40,
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 10,
+            maxWidth: 720,
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        >
+          {[
+            "Marketing",
+            "Operations",
+            "Customer success",
+            "People & HR",
+            "Finance",
+            "Design",
+            "Agencies",
+            "Founders",
+          ].map((team) => (
+            <span
+              key={team}
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: "var(--ink)",
+                background: "var(--surface)",
+                border: "1px solid var(--hairline)",
+                borderRadius: 999,
+                padding: "8px 16px",
+              }}
+            >
+              {team}
+            </span>
+          ))}
+        </div>
+      </section>
 
       {/* Features */}
       <section style={{ maxWidth: MAX, margin: "0 auto", padding: "104px 24px" }}>
@@ -1020,23 +1073,23 @@ function GithubIcon() {
 function BoardMockup() {
   const cols = [
     {
-      title: "Backlog",
+      title: "This week",
       cards: [
-        { label: "ENG-12", title: "Auth email template", priority: "#3B73C4", assignee: "A" },
-        { label: "ENG-13", title: "Mobile responsive fixes", priority: "#E0A33B", assignee: "B" },
+        { label: "MKT-31", title: "September newsletter", priority: "#E0A33B", assignee: "P" },
+        { label: "MKT-32", title: "Pricing page refresh", priority: "#3B73C4", assignee: "R" },
       ],
     },
     {
-      title: "In Progress",
+      title: "In progress",
       cards: [
-        { label: "ENG-14", title: "Command palette search", priority: "#E14B3B", assignee: "C" },
-        { label: "ENG-15", title: "Dark mode toggle", priority: "#3FA66A", assignee: "A" },
+        { label: "MKT-33", title: "Q3 launch campaign", priority: "#E14B3B", assignee: "S" },
+        { label: "MKT-34", title: "Customer story: Acme", priority: "#3FA66A", assignee: "P" },
       ],
     },
     {
-      title: "Done",
+      title: "Published",
       cards: [
-        { label: "ENG-11", title: "RLS policy audit", priority: "#3FA66A", assignee: "B" },
+        { label: "MKT-30", title: "Webinar invite email", priority: "#3FA66A", assignee: "R" },
       ],
     },
   ];
