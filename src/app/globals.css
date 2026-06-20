@@ -82,9 +82,13 @@ select.border:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--slate) 22%, transparent);
 }
 
-/* A borderless <select> has no caret to signal focus, so keyboard users would
-   otherwise get nothing. Give it a calm neutral ring (never the red pin).
-   Text inputs/textareas intentionally rely on the caret, per above. */
+/* Borderless form controls (card title, composers, search, the template
+   select) still need a visible keyboard-focus indicator. Give them a calm
+   neutral ring — never the loud red pin. Mouse focus on text fields keeps the
+   quiet caret-only look; :focus-visible only fires for keyboard/programmatic
+   focus per the browser heuristic. */
+input:not(.border):focus-visible,
+textarea:not(.border):focus-visible,
 select:not(.border):focus-visible {
   outline: 2px solid color-mix(in srgb, var(--ink) 30%, var(--hairline));
   outline-offset: 1px;
