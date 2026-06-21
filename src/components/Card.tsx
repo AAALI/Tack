@@ -179,7 +179,7 @@ export default CardItem;
 
 // ---- Quick-assign popover ---------------------------------------------------
 
-function AssignPicker({
+export function AssignPicker({
   card,
   members,
   currentUserId,
