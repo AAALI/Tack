@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Trash2, Plus, ExternalLink, Link2, AlertCircle } from "lucide-react";
+import { X, Trash2, Plus, ExternalLink, Link2, AlertCircle, Copy } from "lucide-react";
 import {
   THEME,
   tack,
@@ -39,6 +39,7 @@ export default function CardModal({
   onReload,
   onSave,
   onDelete,
+  onDuplicate,
   onClose,
 }: {
   card: TCard;
@@ -48,6 +49,7 @@ export default function CardModal({
   onReload?: () => void;
   onSave: (patch: CardPatch) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(card.title);
@@ -375,13 +377,24 @@ export default function CardModal({
           )}
 
           <div className="flex justify-between items-center mt-6">
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1.5 text-sm"
-              style={{ color: tack.slate }}
-            >
-              <Trash2 size={14} /> Delete
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={onDelete}
+                className="flex items-center gap-1.5 text-sm"
+                style={{ color: tack.slate }}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+              {onDuplicate && card.number !== null && (
+                <button
+                  onClick={onDuplicate}
+                  className="flex items-center gap-1.5 text-sm"
+                  style={{ color: tack.slate }}
+                >
+                  <Copy size={14} /> Duplicate
+                </button>
+              )}
+            </div>
             <button
               onClick={close}
               className="text-sm px-4 py-2 rounded-lg text-white font-medium"

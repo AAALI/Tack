@@ -27,6 +27,7 @@ import {
   createBoard,
   createCard,
   deleteCard,
+  duplicateCard,
   deleteColumn as deleteColumnAction,
   renameBoard,
   renameColumn as renameColumnAction,
@@ -503,6 +504,18 @@ export default function Board({
     if (!id.startsWith("tmp_")) deleteCard(boardId, id);
     // Clear the URL param so a stale ?card=<deleted> doesn't bounce back.
     setParam("card", null);
+  };
+
+  const duplicate = async () => {
+    if (!editing || editing.id.startsWith("tmp_")) return;
+    const res = await duplicateCard(boardId, editing.id);
+    if (res.error) {
+      toast(res.error, "error");
+      return;
+    }
+    setParam("card", null); // close the modal; the copy arrives via realtime
+    scheduleRefetch();
+    toast("Card duplicated", "success");
   };
 
   // ---- column CRUD ----
@@ -1008,6 +1021,7 @@ export default function Board({
           onReload={reloadEditingCard}
           onSave={saveCard}
           onDelete={removeCard}
+          onDuplicate={duplicate}
           onClose={() => setEditing(null)}
         />
       )}
