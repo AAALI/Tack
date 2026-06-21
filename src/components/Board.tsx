@@ -97,6 +97,37 @@ export default function Board({
   const dragFrom = useRef<string | null>(null);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ---- Undo-able deletes ----
+  // A delete removes the item locally and shows an "Undo" toast, but holds the
+  // server write for a few seconds. Undo cancels it; otherwise it commits. On
+  // unmount we flush any still-pending deletes so nothing silently un-deletes.
+  const pendingDeletes = useRef<
+    Map<string, { timer: ReturnType<typeof setTimeout>; flush: () => void }>
+  >(new Map());
+  const scheduleDelete = useCallback((key: string, flush: () => void) => {
+    const timer = setTimeout(() => {
+      pendingDeletes.current.delete(key);
+      flush();
+    }, 5000);
+    pendingDeletes.current.set(key, { timer, flush });
+  }, []);
+  const cancelDelete = useCallback((key: string) => {
+    const p = pendingDeletes.current.get(key);
+    if (!p) return;
+    clearTimeout(p.timer);
+    pendingDeletes.current.delete(key);
+  }, []);
+  useEffect(() => {
+    const map = pendingDeletes.current;
+    return () => {
+      map.forEach((p) => {
+        clearTimeout(p.timer);
+        p.flush();
+      });
+      map.clear();
+    };
+  }, []);
+
   // ---- Optimistic concurrency for the card modal ----
   // The modal edits against a base version captured when it opened. Writes are
   // serialised so our own rapid edits thread the new version; if someone else
@@ -498,11 +529,29 @@ export default function Board({
 
   const removeCard = () => {
     if (!editing) return;
-    const id = editing.id;
+    const card = cards.find((c) => c.id === editing.id);
+    if (!card) return;
+    const id = card.id;
+    const index = cards.findIndex((c) => c.id === id);
+    setParam("card", null); // close the modal
     setCards((prev) => prev.filter((c) => c.id !== id));
-    if (!id.startsWith("tmp_")) deleteCard(boardId, id);
-    // Clear the URL param so a stale ?card=<deleted> doesn't bounce back.
-    setParam("card", null);
+    if (id.startsWith("tmp_")) return;
+
+    scheduleDelete(id, () => deleteCard(boardId, id));
+    toast("Card deleted", "info", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          cancelDelete(id);
+          setCards((prev) => {
+            if (prev.some((c) => c.id === id)) return prev;
+            const next = [...prev];
+            next.splice(Math.min(index, next.length), 0, card);
+            return next;
+          });
+        },
+      },
+    });
   };
 
   // ---- column CRUD ----
@@ -518,11 +567,37 @@ export default function Board({
     if (!columnId.startsWith("tmp_")) renameColumnAction(boardId, columnId, title);
   };
 
+  // No confirm dialog — the Undo toast is the safety net (and the cascade of
+  // cards is restorable too, since the server delete is deferred).
   const deleteColumn = (columnId: string) => {
-    if (cardsIn(columnId).length > 0 && !confirm("Delete this stage and its cards?")) return;
+    const col = columns.find((c) => c.id === columnId);
+    if (!col) return;
+    const index = columns.findIndex((c) => c.id === columnId);
+    const removedCards = cards.filter((c) => c.column_id === columnId);
     setColumns((prev) => prev.filter((c) => c.id !== columnId));
     setCards((prev) => prev.filter((c) => c.column_id !== columnId));
-    if (!columnId.startsWith("tmp_")) deleteColumnAction(boardId, columnId);
+    if (columnId.startsWith("tmp_")) return;
+
+    scheduleDelete(columnId, () => deleteColumnAction(boardId, columnId));
+    const n = removedCards.length;
+    toast(n > 0 ? `Stage deleted with ${n} card${n === 1 ? "" : "s"}` : "Stage deleted", "info", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          cancelDelete(columnId);
+          setColumns((prev) => {
+            if (prev.some((c) => c.id === columnId)) return prev;
+            const next = [...prev];
+            next.splice(Math.min(index, next.length), 0, col);
+            return next;
+          });
+          setCards((prev) => [
+            ...prev,
+            ...removedCards.filter((rc) => !prev.some((c) => c.id === rc.id)),
+          ]);
+        },
+      },
+    });
   };
 
   const activeCard = useMemo(
