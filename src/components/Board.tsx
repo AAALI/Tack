@@ -56,6 +56,55 @@ import { useToast } from "./Toast";
 
 const tmp = () => "tmp_" + Math.random().toString(36).slice(2, 9);
 
+// Identity-preserving merge of a fresh server list onto the current one. Rows
+// that didn't change keep their existing object reference so memoised children
+// (and the open modal) don't re-render on every realtime echo.
+function reconcile<T extends { id: string }>(
+  prev: T[],
+  next: T[],
+  eq: (a: T, b: T) => boolean
+): T[] {
+  if (prev.length === next.length) {
+    let same = true;
+    for (let i = 0; i < next.length; i++) {
+      if (prev[i].id !== next[i].id || !eq(prev[i], next[i])) {
+        same = false;
+        break;
+      }
+    }
+    if (same) return prev; // nothing moved or changed → same reference, no re-render
+  }
+  const byId = new Map(prev.map((p) => [p.id, p] as const));
+  return next.map((n) => {
+    const p = byId.get(n.id);
+    return p && eq(p, n) ? p : n;
+  });
+}
+
+function cardsEqual(a: Card, b: Card): boolean {
+  return (
+    a.title === b.title &&
+    a.description === b.description &&
+    a.assignee === b.assignee &&
+    a.due_date === b.due_date &&
+    a.priority === b.priority &&
+    a.position === b.position &&
+    a.column_id === b.column_id &&
+    a.number === b.number &&
+    a.updated_at === b.updated_at &&
+    JSON.stringify(a.labels) === JSON.stringify(b.labels) &&
+    JSON.stringify(a.links) === JSON.stringify(b.links)
+  );
+}
+
+function columnsEqual(a: TColumn, b: TColumn): boolean {
+  return (
+    a.title === b.title &&
+    a.position === b.position &&
+    (a.wip_limit ?? null) === (b.wip_limit ?? null)
+  );
+}
+
 export default function Board({
   boardId,
   boardName,
@@ -233,6 +282,9 @@ export default function Board({
   );
 
   // ---- live refetch (debounced; skipped while dragging) ----
+  // Reconcile by id so unchanged rows keep their object identity — otherwise a
+  // realtime echo of our own save would hand every card a new reference and
+  // re-render (and flash) the whole board + the open modal on each keystroke.
   const refetch = useCallback(async () => {
     if (activeId) return;
     const supabase = createClient();
@@ -240,8 +292,8 @@ export default function Board({
       supabase.from("columns").select("*").eq("board_id", boardId).order("position"),
       supabase.from("cards").select("*").eq("board_id", boardId).order("position"),
     ]);
-    if (cols) setColumns(cols as TColumn[]);
-    if (cds) setCards(cds as Card[]);
+    if (cols) setColumns((prev) => reconcile(prev, cols as TColumn[], columnsEqual));
+    if (cds) setCards((prev) => reconcile(prev, cds as Card[], cardsEqual));
   }, [boardId, activeId]);
 
   const scheduleRefetch = useCallback(() => {
@@ -926,6 +978,7 @@ export default function Board({
             currentUserId={currentUserId}
             group={listGroup}
             sort={listSort}
+            dragging={activeType === "card"}
             onCardClick={setEditing}
             onPatchCard={patchCard}
             onAddCard={addCard}

@@ -122,6 +122,7 @@ export default function ListView({
   currentUserId,
   group,
   sort,
+  dragging = false,
   onCardClick,
   onPatchCard,
   onAddCard,
@@ -133,6 +134,7 @@ export default function ListView({
   currentUserId: string;
   group: ListGroup;
   sort: ListSort;
+  dragging?: boolean;
   onCardClick: (card: TCard) => void;
   onPatchCard: (cardId: string, patch: CardPatch) => void;
   onAddCard: (columnId: string, title: string) => void;
@@ -152,12 +154,13 @@ export default function ListView({
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         {groups.map((g) => (
           <Section
             key={g.key}
             group={g}
             draggable={draggable}
+            dragging={dragging}
             collapsed={collapsed.has(g.key)}
             onToggle={() => toggle(g.key)}
             members={members}
@@ -176,6 +179,7 @@ export default function ListView({
 function Section({
   group,
   draggable,
+  dragging,
   collapsed,
   onToggle,
   members,
@@ -187,6 +191,7 @@ function Section({
 }: {
   group: Group;
   draggable: boolean;
+  dragging: boolean;
   collapsed: boolean;
   onToggle: () => void;
   members: Member[];
@@ -203,7 +208,12 @@ function Section({
     disabled: !draggable || !group.columnId,
   });
 
+  // Cards/droppable hide when collapsed — but a drag temporarily expands every
+  // group so you can always drop into one. "Add card" stays available even
+  // while collapsed (it's inside the contained block below).
+  const expanded = !collapsed || dragging;
   const Chevron = collapsed ? ChevronRight : ChevronDown;
+  const hasBlock = expanded || !!group.columnId;
 
   const rows = group.cards.map((card) =>
     draggable ? (
@@ -229,51 +239,53 @@ function Section({
     )
   );
 
-  const body = (
-    <div
-      ref={draggable && group.columnId ? setNodeRef : undefined}
-      className="rounded-lg transition-colors"
-      style={isOver ? { background: tack.wash } : undefined}
-    >
-      {rows}
-      {group.cards.length === 0 && (
-        <p className="px-3 py-3 text-xs" style={{ color: tack.slate }}>
-          No cards
-        </p>
-      )}
-      {draggable && group.columnId && (
-        <AddRow columnId={group.columnId} onAddCard={onAddCard} />
-      )}
-    </div>
-  );
+  const cardsContent =
+    group.cards.length > 0 ? (
+      rows
+    ) : (
+      <p className="px-3 py-3 text-xs" style={{ color: tack.slate }}>
+        No cards{draggable ? " — drop one here" : ""}
+      </p>
+    );
 
   return (
-    <section className="mb-5">
+    <section className="mb-4">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 py-2 text-left"
-        style={{ color: tack.ink }}
+        className="w-full flex items-center gap-1.5 px-1 pb-1.5 text-left"
       >
-        <Chevron size={15} style={{ color: tack.slate }} />
-        <span className="text-sm font-semibold">{group.label}</span>
-        <span
-          className="text-[11px] font-meta px-1.5 py-0.5 rounded-full"
-          style={{ background: tack.surface, color: tack.slate, border: `1px solid ${tack.hairline}` }}
-        >
+        <Chevron size={14} style={{ color: tack.slate }} className="shrink-0" />
+        <span className="font-display text-sm" style={{ color: tack.ink, fontWeight: 600 }}>
+          {group.label}
+        </span>
+        <span className="font-meta text-[11px]" style={{ color: tack.slate }}>
           {group.cards.length}
         </span>
       </button>
-      {!collapsed &&
-        (draggable ? (
-          <SortableContext
-            items={group.cards.map((c) => c.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {body}
-          </SortableContext>
-        ) : (
-          body
-        ))}
+
+      {hasBlock && (
+        <div
+          ref={draggable && group.columnId ? setNodeRef : undefined}
+          className="rounded-xl overflow-hidden divide-y divide-[color:var(--hairline)] transition-colors"
+          style={{
+            background: tack.surface,
+            border: `1px solid ${isOver ? tack.pin : tack.hairline}`,
+          }}
+        >
+          {expanded &&
+            (draggable ? (
+              <SortableContext
+                items={group.cards.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {cardsContent}
+              </SortableContext>
+            ) : (
+              cardsContent
+            ))}
+          {group.columnId && <AddRow columnId={group.columnId} onAddCard={onAddCard} />}
+        </div>
+      )}
     </section>
   );
 }
@@ -320,6 +332,7 @@ function Row({
   draggable,
 }: RowProps & { draggable?: boolean }) {
   const due = fmtDate(card.due_date);
+  const overdue = card.due_date ? dueBucket(card.due_date).key === "overdue" : false;
   const assigneeName =
     card.assignee != null
       ? members.find((m) => m.user_id === card.assignee)?.full_name ??
@@ -338,44 +351,45 @@ function Row({
           onCardClick(card);
         }
       }}
-      className="group flex items-center gap-2.5 px-2 py-2 cursor-pointer hover:bg-black/[0.03] transition-colors"
-      style={{ borderBottom: `1px solid ${tack.hairline}` }}
+      className="group/row flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-black/[0.02] transition-colors"
     >
-      {draggable ? (
+      {draggable && (
         <GripVertical
           size={14}
-          className="shrink-0 opacity-0 group-hover:opacity-40"
+          className="shrink-0 opacity-0 group-hover/row:opacity-40 transition-opacity -ml-1"
           style={{ color: tack.slate }}
           aria-hidden
         />
-      ) : (
-        <span className="shrink-0 w-[14px]" aria-hidden />
       )}
 
-      <span
-        className="shrink-0 h-2 w-2 rounded-full"
-        style={{ background: PRIORITY_COLOR[card.priority] }}
-        title={`${card.priority} priority`}
-        aria-hidden
-      />
+      {/* priority — fixed slot so titles align whether or not a dot shows */}
+      <span className="shrink-0 flex w-2 justify-center" aria-hidden>
+        {card.priority !== "none" && (
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: PRIORITY_COLOR[card.priority] }}
+            title={`${card.priority} priority`}
+          />
+        )}
+      </span>
 
       {card.number !== null && (
         <span
-          className="shrink-0 font-meta text-[11px] tracking-[0.03em] w-14"
+          className="shrink-0 font-meta text-[11px] tracking-[0.02em] tabular-nums w-12"
           style={{ color: tack.slate }}
         >
           {boardPrefix}-{card.number}
         </span>
       )}
 
-      <span className="flex-1 min-w-0 truncate text-sm" style={{ color: tack.ink }}>
+      <span className="flex-1 min-w-0 truncate text-sm" style={{ color: tack.ink, fontWeight: 450 }}>
         {card.title}
       </span>
 
       {card.labels.slice(0, 2).map((l, i) => (
         <span
           key={i}
-          className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
+          className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full shrink-0 max-w-[8rem] truncate"
           style={{ background: tack.wash, color: tack.slate }}
         >
           {l}
@@ -395,7 +409,8 @@ function Row({
       {due && (
         <span
           className="flex items-center gap-1 font-meta text-[11px] uppercase shrink-0"
-          style={{ color: tack.slate }}
+          style={{ color: overdue ? tack.pin : tack.slate }}
+          title={overdue ? "Overdue" : undefined}
         >
           <CalendarDays size={12} />
           {due}
@@ -436,7 +451,7 @@ function AddRow({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-sm px-2 py-2 w-full hover:bg-black/[0.03] rounded-b-lg"
+        className="flex items-center gap-1.5 text-sm px-3 py-2 w-full hover:bg-black/[0.02] transition-colors"
         style={{ color: tack.slate }}
       >
         <Plus size={14} /> Add card
@@ -444,7 +459,7 @@ function AddRow({
     );
   }
   return (
-    <div className="px-2 py-1.5">
+    <div className="px-2.5 py-2">
       <input
         autoFocus
         value={text}
@@ -459,7 +474,7 @@ function AddRow({
         onBlur={() => setOpen(false)}
         placeholder="Card title…  (Enter to add)"
         className="w-full rounded-md px-2 py-1.5 text-sm outline-none border"
-        style={{ borderColor: tack.hairline, background: tack.surface, color: tack.ink }}
+        style={{ borderColor: tack.hairline, background: tack.paper, color: tack.ink }}
       />
     </div>
   );
