@@ -122,6 +122,7 @@ export default function ListView({
   currentUserId,
   group,
   sort,
+  dragging = false,
   onCardClick,
   onPatchCard,
   onAddCard,
@@ -133,6 +134,7 @@ export default function ListView({
   currentUserId: string;
   group: ListGroup;
   sort: ListSort;
+  dragging?: boolean;
   onCardClick: (card: TCard) => void;
   onPatchCard: (cardId: string, patch: CardPatch) => void;
   onAddCard: (columnId: string, title: string) => void;
@@ -158,6 +160,7 @@ export default function ListView({
             key={g.key}
             group={g}
             draggable={draggable}
+            dragging={dragging}
             collapsed={collapsed.has(g.key)}
             onToggle={() => toggle(g.key)}
             members={members}
@@ -176,6 +179,7 @@ export default function ListView({
 function Section({
   group,
   draggable,
+  dragging,
   collapsed,
   onToggle,
   members,
@@ -187,6 +191,7 @@ function Section({
 }: {
   group: Group;
   draggable: boolean;
+  dragging: boolean;
   collapsed: boolean;
   onToggle: () => void;
   members: Member[];
@@ -203,6 +208,10 @@ function Section({
     disabled: !draggable || !group.columnId,
   });
 
+  // Cards/droppable hide when collapsed — but a drag temporarily expands every
+  // group so you can always drop into one. "Add card" stays available even
+  // while collapsed (it's outside the collapsible body).
+  const expanded = !collapsed || dragging;
   const Chevron = collapsed ? ChevronRight : ChevronDown;
 
   const rows = group.cards.map((card) =>
@@ -241,9 +250,6 @@ function Section({
           No cards
         </p>
       )}
-      {draggable && group.columnId && (
-        <AddRow columnId={group.columnId} onAddCard={onAddCard} />
-      )}
     </div>
   );
 
@@ -263,7 +269,7 @@ function Section({
           {group.cards.length}
         </span>
       </button>
-      {!collapsed &&
+      {expanded &&
         (draggable ? (
           <SortableContext
             items={group.cards.map((c) => c.id)}
@@ -274,6 +280,7 @@ function Section({
         ) : (
           body
         ))}
+      {group.columnId && <AddRow columnId={group.columnId} onAddCard={onAddCard} />}
     </section>
   );
 }
