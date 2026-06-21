@@ -10,7 +10,7 @@
 -- =====================================================================
 
 begin;
-select plan(21);
+select plan(24);
 
 -- ---------- Personas ----------
 -- The new-user trigger (handle_new_user) auto-populates public.profiles.
@@ -157,6 +157,32 @@ select is(
   'the consumed invite is deleted'
 );
 
+-- ---------- Archive + favourite (owner / per-user) ----------
+do $$
+declare bid uuid;
+begin
+  select id into bid from public.boards
+    where created_by = '11111111-1111-1111-1111-111111111111';
+  update public.boards set archived_at = now() where id = bid;
+  perform public.set_board_favorite(bid, true);
+end $$;
+
+select isnt(
+  (select archived_at from public.boards
+     where created_by = '11111111-1111-1111-1111-111111111111'),
+  null,
+  'Owner can archive their own board (boards_modify allows the update)'
+);
+
+select is(
+  (select favorite from public.board_members
+     where user_id = '11111111-1111-1111-1111-111111111111'
+       and board_id = (select id from public.boards
+                         where created_by = '11111111-1111-1111-1111-111111111111')),
+  true,
+  'set_board_favorite stars the caller''s own membership row'
+);
+
 -- ---------- Carol (non-member) is denied everything ----------
 set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
 
@@ -230,6 +256,21 @@ select throws_ok(
   'P0001',
   'Only an owner can add members',
   'Non-owner cannot add board members'
+);
+
+-- Bob can't un/archive: boards_modify is owner-only, so his UPDATE matches
+-- 0 rows and the board stays archived (as Alice left it).
+do $$
+declare bid uuid;
+begin
+  select id into bid from public.boards limit 1;
+  update public.boards set archived_at = null where id = bid;
+end $$;
+
+select isnt(
+  (select archived_at from public.boards limit 1),
+  null,
+  'Non-owner cannot archive/unarchive a board (boards_modify is owner-only)'
 );
 
 select * from finish();

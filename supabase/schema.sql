@@ -18,6 +18,7 @@ create table if not exists public.boards (
   name        text not null,
   prefix      text not null default 'BRD',
   created_by  uuid references auth.users (id) on delete set null,
+  archived_at timestamptz,                       -- null = active; set to soft-archive
   created_at  timestamptz not null default now(),
   constraint  boards_prefix_format check (prefix ~ '^[A-Z0-9]{3}$')
 );
@@ -26,6 +27,7 @@ create table if not exists public.board_members (
   board_id    uuid not null references public.boards (id) on delete cascade,
   user_id     uuid not null references auth.users (id) on delete cascade,
   role        text not null default 'member' check (role in ('owner', 'member')),
+  favorite    boolean not null default false,    -- per-user star
   created_at  timestamptz not null default now(),
   primary key (board_id, user_id)
 );
@@ -308,6 +310,21 @@ begin
   values (board, normalized, auth.uid())
   on conflict (board_id, email) do nothing;
   return 'invited';
+end;
+$$;
+
+-- ---------- RPC: per-user board favourite (own row only) ----------
+-- board_members has no UPDATE policy by design, so the favourite flag is flipped
+-- through this SECURITY DEFINER function scoped to the caller's membership row.
+create or replace function public.set_board_favorite(board uuid, fav boolean)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update public.board_members
+     set favorite = fav
+   where board_id = board and user_id = auth.uid();
 end;
 $$;
 

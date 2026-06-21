@@ -14,14 +14,21 @@ export default async function BoardsIndexPage() {
 
   // Fire all reads in parallel.
   const [{ data: memberships }, { data: allCards }, { data: profile }] = await Promise.all([
-    supabase.from("board_members").select("role, boards(id, name)").eq("user_id", user.id),
+    supabase
+      .from("board_members")
+      .select("role, favorite, boards(id, name, archived_at)")
+      .eq("user_id", user.id),
     // RLS scopes this to the user's boards already — a single fetch + JS tally
     // is the cheap path at team scale.
     supabase.from("cards").select("board_id"),
     supabase.from("profiles").select("full_name, email").eq("id", user.id).maybeSingle(),
   ]);
 
-  type Row = { role: string; boards: { id: string; name: string } | null };
+  type Row = {
+    role: string;
+    favorite: boolean;
+    boards: { id: string; name: string; archived_at: string | null } | null;
+  };
   const rows = (memberships ?? []) as unknown as Row[];
 
   const counts = new Map<string, number>();
@@ -36,8 +43,11 @@ export default async function BoardsIndexPage() {
       name: r.boards!.name,
       role: r.role,
       cardCount: counts.get(r.boards!.id) ?? 0,
+      favorite: r.favorite ?? false,
+      archived: r.boards!.archived_at != null,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    // Favourites first, then alphabetical.
+    .sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name));
 
   const me = {
     name: profile?.full_name ?? null,

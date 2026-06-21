@@ -39,6 +39,36 @@ export async function deleteBoard(boardId: string) {
   redirect("/boards");
 }
 
+// Soft-archive (owner-only via the boards_modify RLS policy). Reversible.
+export async function archiveBoard(boardId: string): Promise<{ error: string | null }> {
+  const supabase = await db();
+  const { error } = await supabase
+    .from("boards")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", boardId);
+  if (error) return { error: error.message };
+  revalidatePath("/boards");
+  return { error: null };
+}
+
+export async function unarchiveBoard(boardId: string): Promise<{ error: string | null }> {
+  const supabase = await db();
+  const { error } = await supabase
+    .from("boards")
+    .update({ archived_at: null })
+    .eq("id", boardId);
+  if (error) return { error: error.message };
+  revalidatePath("/boards");
+  return { error: null };
+}
+
+// Per-user star, via the SECURITY DEFINER RPC (own membership row only).
+export async function setBoardFavorite(boardId: string, favorite: boolean) {
+  const supabase = await db();
+  await supabase.rpc("set_board_favorite", { board: boardId, fav: favorite });
+  revalidatePath("/boards");
+}
+
 // ---------- Members ----------
 
 export async function addMember(
