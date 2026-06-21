@@ -3,8 +3,26 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Plus, Search } from "lucide-react";
-import { createBoard, createBoardFromTemplate } from "@/lib/actions";
+import {
+  ChevronDown,
+  Plus,
+  Search,
+  Star,
+  MoreHorizontal,
+  Pencil,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+} from "lucide-react";
+import {
+  createBoard,
+  createBoardFromTemplate,
+  archiveBoard,
+  unarchiveBoard,
+  setBoardFavorite,
+  renameBoard,
+  deleteBoard,
+} from "@/lib/actions";
 import { tack } from "@/lib/theme";
 import TopBar from "./TopBar";
 import HomeCommandPalette from "./HomeCommandPalette";
@@ -14,6 +32,8 @@ export type BoardTile = {
   name: string;
   role: string;
   cardCount: number;
+  favorite: boolean;
+  archived: boolean;
 };
 
 export default function BoardsHome({
@@ -31,12 +51,16 @@ export default function BoardsHome({
   const [pending, start] = useTransition();
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const filteredBoards = useMemo(() => {
     const needle = search.trim().toLowerCase();
     if (!needle) return boards;
     return boards.filter((b) => b.name.toLowerCase().includes(needle));
   }, [boards, search]);
+
+  const activeBoards = filteredBoards.filter((b) => !b.archived);
+  const archivedBoards = filteredBoards.filter((b) => b.archived);
 
   // Cmd/Ctrl+K global shortcut
   useEffect(() => {
@@ -84,9 +108,9 @@ export default function BoardsHome({
                 Your boards
               </h1>
               <p className="text-sm mt-1 font-meta" style={{ color: tack.slate }}>
-                {boards.length === 0
+                {activeBoards.length === 0 && archivedBoards.length === 0
                   ? "Nothing pinned yet. Add your first board."
-                  : `${boards.length} ${boards.length === 1 ? "board" : "boards"}`}
+                  : `${activeBoards.length} ${activeBoards.length === 1 ? "board" : "boards"}`}
               </p>
             </div>
 
@@ -125,7 +149,7 @@ export default function BoardsHome({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredBoards.map((b) => (
+            {activeBoards.map((b) => (
               <BoardCard key={b.id} board={b} />
             ))}
 
@@ -220,13 +244,37 @@ export default function BoardsHome({
               </button>
             )}
           </div>
+
+          {/* Archived */}
+          {archivedBoards.length > 0 && (
+            <div className="mt-8">
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="flex items-center gap-1.5 text-sm font-meta uppercase tracking-[0.06em]"
+                style={{ color: tack.slate }}
+              >
+                <ChevronDown
+                  size={14}
+                  style={{ transform: showArchived ? "none" : "rotate(-90deg)", transition: "transform .15s" }}
+                />
+                Archived ({archivedBoards.length})
+              </button>
+              {showArchived && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                  {archivedBoards.map((b) => (
+                    <BoardCard key={b.id} board={b} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
       <HomeCommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        boards={boards}
+        boards={boards.filter((b) => !b.archived)}
         onNewBoard={() => setAdding(true)}
       />
     </div>
@@ -234,14 +282,60 @@ export default function BoardsHome({
 }
 
 function BoardCard({ board }: { board: BoardTile }) {
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(board.name);
+  const [fav, setFav] = useState(board.favorite);
+  const isOwner = board.role === "owner";
+
+  // Stop a control click from following the card's link.
+  const stop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const toggleFav = (e: React.MouseEvent) => {
+    stop(e);
+    const next = !fav;
+    setFav(next); // optimistic
+    start(async () => {
+      await setBoardFavorite(board.id, next);
+      router.refresh();
+    });
+  };
+
+  const doRename = () => {
+    const v = name.trim();
+    setRenaming(false);
+    if (!v || v === board.name) {
+      setName(board.name);
+      return;
+    }
+    start(async () => {
+      await renameBoard(board.id, v);
+      router.refresh();
+    });
+  };
+
+  const run = (fn: () => Promise<unknown>) => {
+    setMenuOpen(false);
+    start(async () => {
+      await fn();
+      router.refresh();
+    });
+  };
+
   return (
     <Link
       href={`/boards/${board.id}`}
-      className="relative rounded-xl p-4 flex flex-col gap-3 transition-shadow hover:shadow-md"
+      className="group relative rounded-xl p-4 flex flex-col gap-3 transition-shadow hover:shadow-md"
       style={{
         background: tack.surface,
         border: `1px solid ${tack.hairline}`,
         minHeight: 132,
+        opacity: board.archived ? 0.6 : 1,
       }}
     >
       {/* Pin signature on each board tile. */}
@@ -250,19 +344,137 @@ function BoardCard({ board }: { board: BoardTile }) {
         style={{ background: tack.pin }}
         aria-hidden
       />
-      <h2
-        className="text-lg font-display leading-tight pr-6"
-        style={{ color: tack.ink, fontWeight: 600 }}
+
+      {/* Star + menu, top-right */}
+      <div className="absolute top-2.5 right-2.5 flex items-center gap-0.5">
+        <button
+          onClick={toggleFav}
+          className={`p-1 rounded-md hover:bg-black/5 transition-opacity ${
+            fav ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          style={{ color: fav ? tack.pin : tack.slate }}
+          title={fav ? "Unstar" : "Star"}
+          aria-label={fav ? "Unstar board" : "Star board"}
+        >
+          <Star size={15} fill={fav ? tack.pin : "none"} />
+        </button>
+        {isOwner && (
+          <button
+            onClick={(e) => {
+              stop(e);
+              setMenuOpen((v) => !v);
+            }}
+            className="p-1 rounded-md hover:bg-black/5 opacity-0 group-hover:opacity-100"
+            style={{ color: tack.slate }}
+            aria-label="Board menu"
+          >
+            <MoreHorizontal size={15} />
+          </button>
+        )}
+      </div>
+
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={stop} aria-hidden />
+          <div
+            className="absolute z-50 top-10 right-2.5 w-40 rounded-xl shadow-lg p-1"
+            style={{ background: tack.surface, border: `1px solid ${tack.hairline}` }}
+            onClick={stop}
+          >
+            <MenuItem
+              icon={<Pencil size={14} />}
+              label="Rename"
+              onClick={() => {
+                setMenuOpen(false);
+                setRenaming(true);
+              }}
+            />
+            {board.archived ? (
+              <MenuItem
+                icon={<ArchiveRestore size={14} />}
+                label="Unarchive"
+                onClick={() => run(() => unarchiveBoard(board.id))}
+              />
+            ) : (
+              <MenuItem
+                icon={<Archive size={14} />}
+                label="Archive"
+                onClick={() => run(() => archiveBoard(board.id))}
+              />
+            )}
+            <MenuItem
+              icon={<Trash2 size={14} />}
+              label="Delete"
+              tone="danger"
+              onClick={() => {
+                setMenuOpen(false);
+                if (confirm(`Delete "${board.name}" and all its cards? This can't be undone.`)) {
+                  run(() => deleteBoard(board.id));
+                }
+              }}
+            />
+          </div>
+        </>
+      )}
+
+      {renaming ? (
+        <input
+          autoFocus
+          value={name}
+          onClick={stop}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") doRename();
+            if (e.key === "Escape") {
+              setName(board.name);
+              setRenaming(false);
+            }
+          }}
+          onBlur={doRename}
+          className="text-lg font-display leading-tight pr-6 bg-transparent outline-none border-b"
+          style={{ color: tack.ink, fontWeight: 600, borderColor: tack.hairline }}
+        />
+      ) : (
+        <h2
+          className="text-lg font-display leading-tight pr-12"
+          style={{ color: tack.ink, fontWeight: 600 }}
+        >
+          {board.name}
+        </h2>
+      )}
+
+      <div
+        className="mt-auto flex items-center justify-between text-[11px] font-meta uppercase tracking-[0.06em]"
+        style={{ color: tack.slate }}
       >
-        {board.name}
-      </h2>
-      <div className="mt-auto flex items-center justify-between text-[11px] font-meta uppercase tracking-[0.06em]"
-        style={{ color: tack.slate }}>
-        <span>{board.role}</span>
+        <span>{board.archived ? "Archived" : board.role}</span>
         <span>
           {board.cardCount} {board.cardCount === 1 ? "card" : "cards"}
         </span>
       </div>
     </Link>
+  );
+}
+
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  tone?: "danger";
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 text-left text-sm px-2.5 py-1.5 rounded-md hover:bg-black/[0.04]"
+      style={{ color: tone === "danger" ? tack.pin : tack.ink }}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
