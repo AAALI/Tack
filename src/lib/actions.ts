@@ -168,6 +168,54 @@ export async function deleteCard(_boardId: string, cardId: string) {
   await supabase.from("cards").delete().eq("id", cardId);
 }
 
+// One-click copy: clone a card's content into a new card appended to the same
+// column. The number trigger assigns a fresh ID; activity logs a 'created'.
+export async function duplicateCard(
+  boardId: string,
+  cardId: string
+): Promise<{ id?: string; error?: string }> {
+  const supabase = await db();
+  const { data: src, error } = await supabase
+    .from("cards")
+    .select("column_id, title, description, assignee, due_date, priority, labels, links")
+    .eq("id", cardId)
+    .single();
+  if (error || !src) return { error: error?.message ?? "Card not found" };
+
+  const { data: last } = await supabase
+    .from("cards")
+    .select("position")
+    .eq("board_id", boardId)
+    .eq("column_id", src.column_id)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const position = (last?.position ?? -1) + 1;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: inserted, error: insErr } = await supabase
+    .from("cards")
+    .insert({
+      board_id: boardId,
+      column_id: src.column_id,
+      title: src.title,
+      description: src.description,
+      assignee: src.assignee,
+      due_date: src.due_date,
+      priority: src.priority,
+      labels: src.labels,
+      links: src.links,
+      position,
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (insErr) return { error: insErr.message };
+  return { id: inserted.id as string };
+}
+
 // Persist a new order after a drag. `updates` covers only the moved/affected cards.
 export async function reorderCards(
   _boardId: string,
