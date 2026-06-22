@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, GripVertical, CalendarDays, Link2, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  CalendarDays,
+  Link2,
+  Plus,
+  Check,
+} from "lucide-react";
 import {
   tack,
   PRIORITY_COLOR,
@@ -16,7 +24,7 @@ import {
 import type { CardPatch } from "@/lib/actions";
 import { AssignPicker } from "./Card";
 
-export type ListGroup = "status" | "assignee" | "priority" | "due";
+export type ListGroup = "none" | "status" | "assignee" | "priority" | "due";
 export type ListSort = "manual" | "due" | "priority" | "created";
 
 const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2, none: 3 };
@@ -45,9 +53,6 @@ function dueBucket(d: string | null): { key: string; label: string; order: numbe
 
 type Group = { key: string; label: string; columnId?: string; cards: TCard[] };
 
-// The list shares the board's data model: `cards` arrives already filtered and
-// in board order. `manual` sort preserves that order (so drag-reorder stays
-// truthful); any other sort re-orders within each group.
 function buildGroups(
   cards: TCard[],
   columns: TColumn[],
@@ -72,7 +77,9 @@ function buildGroups(
   };
 
   let groups: Group[] = [];
-  if (group === "status") {
+  if (group === "none") {
+    groups = [{ key: "__all__", label: "", cards: [...cards] }];
+  } else if (group === "status") {
     groups = columns.map((c) => ({
       key: c.id,
       label: c.title,
@@ -125,6 +132,7 @@ export default function ListView({
   dragging = false,
   onCardClick,
   onPatchCard,
+  onSetColumn,
   onAddCard,
 }: {
   columns: TColumn[];
@@ -137,12 +145,24 @@ export default function ListView({
   dragging?: boolean;
   onCardClick: (card: TCard) => void;
   onPatchCard: (cardId: string, patch: CardPatch) => void;
+  onSetColumn: (cardId: string, columnId: string) => void;
   onAddCard: (columnId: string, title: string) => void;
 }) {
-  // Drag is only truthful when the visual order is the stored order, i.e.
-  // grouped by status with manual sort. Otherwise rows are static and status
-  // changes happen in the card modal.
+  // Stage colour comes from the Pin set, keyed by column order — stable per
+  // board, so a stage reads as the same hue everywhere (colour = meaning).
+  const stageColor = (columnId: string) => {
+    const i = columns.findIndex((c) => c.id === columnId);
+    return i >= 0 ? tack.pins[i % tack.pins.length] : tack.slate;
+  };
+  const stageName = (columnId: string) => columns.find((c) => c.id === columnId)?.title ?? "—";
+
+  // Drag (reorder) is only truthful when grouped by status with manual sort.
   const draggable = group === "status" && sort === "manual";
+  // Show the status pill on every row except when the list is *grouped* by
+  // status (the header already says it). This is what makes the row tell you
+  // its stage at a glance — the whole point of v3.
+  const showStatus = group !== "status";
+
   const groups = buildGroups(cards, columns, members, group, sort);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
@@ -152,29 +172,69 @@ export default function ListView({
       return next;
     });
 
+  const rowProps = {
+    members,
+    boardPrefix,
+    currentUserId,
+    columns,
+    stageColor,
+    stageName,
+    showStatus,
+    onCardClick,
+    onPatchCard,
+    onSetColumn,
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-        {groups.map((g) => (
-          <Section
-            key={g.key}
-            group={g}
-            draggable={draggable}
-            dragging={dragging}
-            collapsed={collapsed.has(g.key)}
-            onToggle={() => toggle(g.key)}
-            members={members}
-            boardPrefix={boardPrefix}
-            currentUserId={currentUserId}
-            onCardClick={onCardClick}
-            onPatchCard={onPatchCard}
-            onAddCard={onAddCard}
-          />
-        ))}
+        {group === "none" ? (
+          // Pure flat list — "just a list", every row carries its stage.
+          <>
+            <div className="rounded-lg divide-y divide-[color:var(--hairline)]">
+              {(groups[0]?.cards ?? []).map((card) => (
+                <Row key={card.id} card={card} {...rowProps} />
+              ))}
+            </div>
+            {columns[0] && (
+              <div className="mt-0.5">
+                <AddRow columnId={columns[0].id} onAddCard={onAddCard} />
+              </div>
+            )}
+          </>
+        ) : (
+          groups.map((g) => (
+            <Section
+              key={g.key}
+              group={g}
+              draggable={draggable}
+              dragging={dragging}
+              collapsed={collapsed.has(g.key)}
+              onToggle={() => toggle(g.key)}
+              headerDot={g.columnId ? stageColor(g.columnId) : null}
+              rowProps={rowProps}
+              onAddCard={onAddCard}
+            />
+          ))
+        )}
       </div>
     </div>
   );
 }
+
+type RowProps = {
+  card: TCard;
+  members: Member[];
+  boardPrefix: string;
+  currentUserId: string;
+  columns: TColumn[];
+  stageColor: (columnId: string) => string;
+  stageName: (columnId: string) => string;
+  showStatus: boolean;
+  onCardClick: (card: TCard) => void;
+  onPatchCard: (cardId: string, patch: CardPatch) => void;
+  onSetColumn: (cardId: string, columnId: string) => void;
+};
 
 function Section({
   group,
@@ -182,11 +242,8 @@ function Section({
   dragging,
   collapsed,
   onToggle,
-  members,
-  boardPrefix,
-  currentUserId,
-  onCardClick,
-  onPatchCard,
+  headerDot,
+  rowProps,
   onAddCard,
 }: {
   group: Group;
@@ -194,58 +251,40 @@ function Section({
   dragging: boolean;
   collapsed: boolean;
   onToggle: () => void;
-  members: Member[];
-  boardPrefix: string;
-  currentUserId: string;
-  onCardClick: (card: TCard) => void;
-  onPatchCard: (cardId: string, patch: CardPatch) => void;
+  headerDot: string | null;
+  rowProps: Omit<RowProps, "card">;
   onAddCard: (columnId: string, title: string) => void;
 }) {
-  // A droppable per status group so cards can be dragged into it (incl. empty).
   const { setNodeRef, isOver } = useDroppable({
     id: `col:${group.columnId}`,
     data: { type: "column-drop", columnId: group.columnId },
     disabled: !draggable || !group.columnId,
   });
 
-  // Cards/droppable hide when collapsed — but a drag temporarily expands every
-  // group so you can always drop into one. "Add card" stays available even
-  // while collapsed.
   const expanded = !collapsed || dragging;
   const Chevron = collapsed ? ChevronRight : ChevronDown;
   const empty = group.cards.length === 0;
 
   const rows = group.cards.map((card) =>
     draggable ? (
-      <SortableRow
-        key={card.id}
-        card={card}
-        members={members}
-        boardPrefix={boardPrefix}
-        currentUserId={currentUserId}
-        onCardClick={onCardClick}
-        onPatchCard={onPatchCard}
-      />
+      <SortableRow key={card.id} card={card} {...rowProps} />
     ) : (
-      <Row
-        key={card.id}
-        card={card}
-        members={members}
-        boardPrefix={boardPrefix}
-        currentUserId={currentUserId}
-        onCardClick={onCardClick}
-        onPatchCard={onPatchCard}
-      />
+      <Row key={card.id} card={card} {...rowProps} />
     )
   );
 
   return (
     <section className="mb-5">
+      {/* Sticky so the stage you're looking at stays visible as you scroll. */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-1.5 px-1.5 pb-1 text-left"
+        className="sticky top-0 z-10 w-full flex items-center gap-1.5 px-1.5 py-1.5 text-left"
+        style={{ background: tack.paper }}
       >
         <Chevron size={14} style={{ color: tack.slate }} className="shrink-0" />
+        {headerDot && (
+          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: headerDot }} aria-hidden />
+        )}
         <span className="font-display text-sm" style={{ color: tack.ink, fontWeight: 600 }}>
           {group.label}
         </span>
@@ -254,7 +293,6 @@ function Section({
         </span>
       </button>
 
-      {/* Rows sit flat on the page, separated by hairlines — no heavy card. */}
       {expanded && !empty && (
         <div
           ref={draggable && group.columnId ? setNodeRef : undefined}
@@ -274,8 +312,6 @@ function Section({
         </div>
       )}
 
-      {/* Empty groups show nothing at rest. Mid-drag, a slim hint marks the
-          drop target instead of a permanent "No cards" block. */}
       {dragging && empty && draggable && group.columnId && (
         <div
           ref={setNodeRef}
@@ -303,8 +339,6 @@ function SortableRow(props: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.card.id,
   });
-  // The whole row is the drag handle (the sensor's distance constraint keeps a
-  // click distinct from a drag — same as the board card).
   return (
     <div
       ref={setNodeRef}
@@ -322,22 +356,18 @@ function SortableRow(props: RowProps) {
   );
 }
 
-type RowProps = {
-  card: TCard;
-  members: Member[];
-  boardPrefix: string;
-  currentUserId: string;
-  onCardClick: (card: TCard) => void;
-  onPatchCard: (cardId: string, patch: CardPatch) => void;
-};
-
 function Row({
   card,
   members,
   boardPrefix,
   currentUserId,
+  columns,
+  stageColor,
+  stageName,
+  showStatus,
   onCardClick,
   onPatchCard,
+  onSetColumn,
   draggable,
 }: RowProps & { draggable?: boolean }) {
   const due = fmtDate(card.due_date);
@@ -360,7 +390,7 @@ function Row({
           onCardClick(card);
         }
       }}
-      className="group/row flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-black/[0.02] transition-colors"
+      className="group/row flex items-center gap-2.5 px-2.5 py-2.5 cursor-pointer hover:bg-black/[0.03] transition-colors"
     >
       {draggable && (
         <GripVertical
@@ -371,7 +401,6 @@ function Row({
         />
       )}
 
-      {/* priority — fixed slot so titles align whether or not a dot shows */}
       <span className="shrink-0 flex w-2 justify-center" aria-hidden>
         {card.priority !== "none" && (
           <span
@@ -398,7 +427,7 @@ function Row({
       {card.labels.slice(0, 2).map((l, i) => (
         <span
           key={i}
-          className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full shrink-0 max-w-[8rem] truncate"
+          className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded-full shrink-0 max-w-[7rem] truncate"
           style={{ background: tack.wash, color: tack.slate }}
         >
           {l}
@@ -407,7 +436,7 @@ function Row({
 
       {card.links.length > 0 && (
         <span
-          className="hidden sm:flex items-center gap-0.5 font-meta text-[11px] shrink-0"
+          className="hidden md:flex items-center gap-0.5 font-meta text-[11px] shrink-0"
           style={{ color: tack.slate }}
         >
           <Link2 size={12} />
@@ -417,13 +446,23 @@ function Row({
 
       {due && (
         <span
-          className="flex items-center gap-1 font-meta text-[11px] uppercase shrink-0"
+          className="hidden sm:flex items-center gap-1 font-meta text-[11px] uppercase shrink-0"
           style={{ color: overdue ? tack.pin : tack.slate }}
           title={overdue ? "Overdue" : undefined}
         >
           <CalendarDays size={12} />
           {due}
         </span>
+      )}
+
+      {showStatus && (
+        <StatusPicker
+          columns={columns}
+          currentColumnId={card.column_id}
+          stageColor={stageColor}
+          stageName={stageName}
+          onSelect={(colId) => onSetColumn(card.id, colId)}
+        />
       )}
 
       <span className="shrink-0">
@@ -436,6 +475,104 @@ function Row({
         />
       </span>
     </div>
+  );
+}
+
+// Inline stage control — shows the card's stage as a coloured pill and moves it
+// to another stage on select (the list's equivalent of dragging across columns).
+function StatusPicker({
+  columns,
+  currentColumnId,
+  stageColor,
+  stageName,
+  onSelect,
+}: {
+  columns: TColumn[];
+  currentColumnId: string;
+  stageColor: (columnId: string) => string;
+  stageName: (columnId: string) => string;
+  onSelect: (columnId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setPos({ left: Math.max(8, r.right - 180), top: r.bottom + 6 });
+    };
+    place();
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
+
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onPointerDown={stop}
+        onClick={(e) => {
+          stop(e);
+          setOpen((v) => !v);
+        }}
+        className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs hover:opacity-80"
+        style={{ background: tack.wash, color: tack.slate, border: `1px solid ${tack.hairline}` }}
+        title="Change stage"
+      >
+        <span className="h-2 w-2 rounded-full" style={{ background: stageColor(currentColumnId) }} />
+        <span className="hidden sm:inline max-w-[7rem] truncate">{stageName(currentColumnId)}</span>
+      </button>
+      {open && pos && (
+        <div
+          ref={menuRef}
+          onClick={stop}
+          onPointerDown={stop}
+          className="fixed w-44 rounded-xl shadow-lg p-1 z-50 max-h-72 overflow-y-auto"
+          style={{ left: pos.left, top: pos.top, background: tack.surface, border: `1px solid ${tack.hairline}` }}
+        >
+          <div
+            className="px-2 py-1 text-[10px] font-meta uppercase tracking-[0.08em]"
+            style={{ color: tack.slate }}
+          >
+            Move to stage
+          </div>
+          {columns.map((c) => {
+            const active = c.id === currentColumnId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => {
+                  if (!active) onSelect(c.id);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-2 text-left text-sm px-2 py-1.5 rounded-md hover:bg-black/[0.04]"
+                style={{ color: tack.ink }}
+              >
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: stageColor(c.id) }} />
+                <span className="flex-1 truncate">{c.title}</span>
+                {active && <Check size={13} style={{ color: tack.pin }} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -453,14 +590,13 @@ function AddRow({
     const v = text.trim();
     if (v) onAddCard(columnId, v);
     setText("");
-    // keep open for rapid entry
   };
 
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-sm px-3 py-2 w-full hover:bg-black/[0.02] transition-colors"
+        className="flex items-center gap-1.5 text-sm px-2.5 py-2 w-full hover:bg-black/[0.02] rounded-lg transition-colors"
         style={{ color: tack.slate }}
       >
         <Plus size={14} /> Add card
@@ -468,7 +604,7 @@ function AddRow({
     );
   }
   return (
-    <div className="px-2.5 py-2">
+    <div className="px-2 py-1.5">
       <input
         autoFocus
         value={text}

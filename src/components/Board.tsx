@@ -238,7 +238,7 @@ export default function Board({
   // where a single-column list reads better than a horizontal board.
   const viewParam = sp.get("view") as "board" | "list" | null;
   const view: "board" | "list" = viewParam ?? (isMobile ? "list" : "board");
-  const listGroup = (sp.get("group") as ListGroup | null) ?? "status";
+  const listGroup = (sp.get("group") as ListGroup | null) ?? "none";
   const listSort = (sp.get("sort") as ListSort | null) ?? "manual";
 
   // Derive the modal-target card from the URL. Falls back to null if the id
@@ -439,6 +439,16 @@ export default function Board({
     const next = cards.map((c) => (c.id === cardId ? { ...c, column_id: target.id } : c));
     setCards(next);
     persistColumns(next, [card.column_id, target.id]);
+  };
+
+  // Inline stage change from the list view's status pill — move the card to the
+  // end of the chosen column (the list's equivalent of a cross-column drag).
+  const setCardColumn = (cardId: string, columnId: string) => {
+    const card = cards.find((c) => c.id === cardId);
+    if (!card || card.column_id === columnId) return;
+    const next = [...cards.filter((c) => c.id !== cardId), { ...card, column_id: columnId }];
+    setCards(next);
+    persistColumns(next, [card.column_id, columnId]);
   };
 
   // ---- card CRUD ----
@@ -929,8 +939,9 @@ export default function Board({
             <FilterSelect
               label="Group"
               value={listGroup}
-              onChange={(v) => setParam("group", v === "status" ? null : v)}
+              onChange={(v) => setParam("group", v === "none" ? null : v)}
               options={[
+                { value: "none", label: "None (flat list)" },
                 { value: "status", label: "Status" },
                 { value: "assignee", label: "Assignee" },
                 { value: "priority", label: "Priority" },
@@ -981,6 +992,7 @@ export default function Board({
             dragging={activeType === "card"}
             onCardClick={setEditing}
             onPatchCard={patchCard}
+            onSetColumn={setCardColumn}
             onAddCard={addCard}
           />
         ) : !isMobile ? (
