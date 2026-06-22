@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import {
   createBoard,
-  createBoardFromTemplate,
   archiveBoard,
   unarchiveBoard,
   setBoardFavorite,
@@ -46,7 +45,6 @@ export default function BoardsHome({
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const [template, setTemplate] = useState("default");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [search, setSearch] = useState("");
@@ -79,10 +77,7 @@ export default function BoardsHome({
     if (!name.trim() || pending) return;
     setError(null);
     start(async () => {
-      const res =
-        template === "default"
-          ? await createBoard(name.trim())
-          : await createBoardFromTemplate(name.trim(), template);
+      const res = await createBoard(name.trim());
       if (res?.error || !res?.id) {
         setError(res?.error ?? "Couldn't create the board. Try again.");
         return;
@@ -171,36 +166,12 @@ export default function BoardsHome({
                     if (e.key === "Escape") {
                       setAdding(false);
                       setName("");
-                      setTemplate("default");
                     }
                   }}
                   placeholder="Name this board"
                   className="w-full bg-transparent outline-none text-base font-display"
                   style={{ color: tack.ink, fontWeight: 600 }}
                 />
-                {/* Template picker */}
-                <div className="relative">
-                  <select
-                    value={template}
-                    onChange={(e) => setTemplate(e.target.value)}
-                    className="w-full text-xs rounded-md px-2.5 py-1.5 pr-7 appearance-none outline-none"
-                    style={{
-                      background: tack.wash,
-                      color: tack.ink,
-                      border: `1px solid ${tack.hairline}`,
-                    }}
-                  >
-                    <option value="default">Default (Backlog → Done)</option>
-                    <option value="engineering">Engineering sprint</option>
-                    <option value="marketing">Marketing pipeline</option>
-                    <option value="personal">Personal (3 columns)</option>
-                  </select>
-                  <ChevronDown
-                    size={12}
-                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
-                    style={{ color: tack.slate }}
-                  />
-                </div>
                 {error && (
                   <p className="text-xs" style={{ color: tack.pin }}>
                     {error}
@@ -219,7 +190,6 @@ export default function BoardsHome({
                     onClick={() => {
                       setAdding(false);
                       setName("");
-                      setTemplate("default");
                       setError(null);
                     }}
                     className="text-sm px-3 py-1.5 rounded-md"
