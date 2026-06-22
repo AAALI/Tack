@@ -210,10 +210,10 @@ function Section({
 
   // Cards/droppable hide when collapsed — but a drag temporarily expands every
   // group so you can always drop into one. "Add card" stays available even
-  // while collapsed (it's inside the contained block below).
+  // while collapsed.
   const expanded = !collapsed || dragging;
   const Chevron = collapsed ? ChevronRight : ChevronDown;
-  const hasBlock = expanded || !!group.columnId;
+  const empty = group.cards.length === 0;
 
   const rows = group.cards.map((card) =>
     draggable ? (
@@ -239,20 +239,11 @@ function Section({
     )
   );
 
-  const cardsContent =
-    group.cards.length > 0 ? (
-      rows
-    ) : (
-      <p className="px-3 py-3 text-xs" style={{ color: tack.slate }}>
-        No cards{draggable ? " — drop one here" : ""}
-      </p>
-    );
-
   return (
-    <section className="mb-4">
+    <section className="mb-5">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-1.5 px-1 pb-1.5 text-left"
+        className="w-full flex items-center gap-1.5 px-1.5 pb-1 text-left"
       >
         <Chevron size={14} style={{ color: tack.slate }} className="shrink-0" />
         <span className="font-display text-sm" style={{ color: tack.ink, fontWeight: 600 }}>
@@ -263,27 +254,45 @@ function Section({
         </span>
       </button>
 
-      {hasBlock && (
+      {/* Rows sit flat on the page, separated by hairlines — no heavy card. */}
+      {expanded && !empty && (
         <div
           ref={draggable && group.columnId ? setNodeRef : undefined}
-          className="rounded-xl overflow-hidden divide-y divide-[color:var(--hairline)] transition-colors"
+          className="rounded-lg divide-y divide-[color:var(--hairline)] transition-colors"
+          style={isOver ? { background: tack.wash } : undefined}
+        >
+          {draggable ? (
+            <SortableContext
+              items={group.cards.map((c) => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {rows}
+            </SortableContext>
+          ) : (
+            rows
+          )}
+        </div>
+      )}
+
+      {/* Empty groups show nothing at rest. Mid-drag, a slim hint marks the
+          drop target instead of a permanent "No cards" block. */}
+      {dragging && empty && draggable && group.columnId && (
+        <div
+          ref={setNodeRef}
+          className="h-11 rounded-lg border border-dashed flex items-center justify-center text-xs transition-colors"
           style={{
-            background: tack.surface,
-            border: `1px solid ${isOver ? tack.pin : tack.hairline}`,
+            borderColor: isOver ? tack.pin : tack.hairline,
+            background: isOver ? tack.wash : "transparent",
+            color: tack.slate,
           }}
         >
-          {expanded &&
-            (draggable ? (
-              <SortableContext
-                items={group.cards.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {cardsContent}
-              </SortableContext>
-            ) : (
-              cardsContent
-            ))}
-          {group.columnId && <AddRow columnId={group.columnId} onAddCard={onAddCard} />}
+          Drop here
+        </div>
+      )}
+
+      {group.columnId && (
+        <div className="mt-0.5">
+          <AddRow columnId={group.columnId} onAddCard={onAddCard} />
         </div>
       )}
     </section>
