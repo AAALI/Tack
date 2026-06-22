@@ -286,37 +286,3 @@ export async function exportBoardData(boardId: string) {
   if (firstError) throw new Error(firstError.message);
   return { board, columns: columns ?? [], cards: cards ?? [], members: members ?? [] };
 }
-
-// ---------- Board templates ----------
-
-export async function createBoardFromTemplate(
-  name: string,
-  template: string
-): Promise<{ id?: string; error?: string }> {
-  const supabase = await db();
-  const { data: boardId, error } = await supabase.rpc("create_board", {
-    board_name: name.trim() || "Untitled board",
-  });
-  if (error) return { error: error.message };
-
-  const templates: Record<string, string[]> = {
-    engineering: ["Backlog", "Up Next", "In Progress", "In Review", "Done"],
-    marketing: ["Ideas", "Planned", "In Progress", "Review", "Published"],
-    personal: ["To Do", "In Progress", "Done"],
-  };
-
-  const cols = templates[template];
-  if (cols) {
-    // create_board RPC always inserts its own default columns — remove them
-    // before seeding the template columns to avoid duplicates.
-    await supabase.from("columns").delete().eq("board_id", boardId);
-    await Promise.all(
-      cols.map((title, position) =>
-        supabase.from("columns").insert({ board_id: boardId, title, position })
-      )
-    );
-  }
-
-  revalidatePath("/boards");
-  return { id: boardId as string };
-}
