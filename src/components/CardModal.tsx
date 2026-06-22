@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Trash2, Plus, ExternalLink, Link2, AlertCircle, Copy } from "lucide-react";
+import { X, Trash2, Plus, ExternalLink, Link2, AlertCircle, Copy, ChevronRight } from "lucide-react";
 import {
   THEME,
   tack,
@@ -61,13 +61,17 @@ export default function CardModal({
   const [links, setLinks] = useState<CardLink[]>(card.links);
   const [labelDraft, setLabelDraft] = useState("");
   const [events, setEvents] = useState<CardEvent[]>([]);
+  const [showActivity, setShowActivity] = useState(false);
+  const [loadingActivity, setLoadingActivity] = useState(false);
   const toast = useToast();
 
-  // Activity log. Optimistic temp cards (tmp_…) have no server row yet, so
-  // there's nothing to fetch. Refetch on any card_events change for this card.
+  // Activity log. Hidden by default and only fetched once the user expands it,
+  // so opening a card never waits on the events query. Optimistic temp cards
+  // (tmp_…) have no server row yet, so there's nothing to fetch. While open,
+  // refetch on any card_events change for this card.
   const isPersisted = !card.id.startsWith("tmp_");
   useEffect(() => {
-    if (!isPersisted) return;
+    if (!isPersisted || !showActivity) return;
     const supabase = createClient();
     let cancelled = false;
     const load = async () => {
@@ -77,8 +81,12 @@ export default function CardModal({
         .eq("card_id", card.id)
         .order("created_at", { ascending: false })
         .limit(30);
-      if (!cancelled && data) setEvents(data as CardEvent[]);
+      if (!cancelled) {
+        if (data) setEvents(data as CardEvent[]);
+        setLoadingActivity(false);
+      }
     };
+    setLoadingActivity(true);
     load();
     const channel = supabase
       .channel(`card_events:${card.id}`)
@@ -92,7 +100,7 @@ export default function CardModal({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [card.id, isPersisted]);
+  }, [card.id, isPersisted, showActivity]);
 
   const actorName = (id: string | null): string => {
     if (!id) return "Someone";
@@ -352,27 +360,48 @@ export default function CardModal({
             </div>
           </div>
 
-          {/* Activity */}
-          {isPersisted && events.length > 0 && (
+          {/* Activity — collapsed by default; events load only on expand */}
+          {isPersisted && (
             <>
-              <label className="block text-[11px] font-meta uppercase tracking-[0.08em] mt-5 mb-2" style={{ color: THEME.muted }}>
+              <button
+                onClick={() => setShowActivity((v) => !v)}
+                aria-expanded={showActivity}
+                className="flex items-center gap-1 text-[11px] font-meta uppercase tracking-[0.08em] mt-5 mb-2 hover:opacity-70"
+                style={{ color: THEME.muted }}
+              >
+                <ChevronRight
+                  size={12}
+                  style={{ transform: showActivity ? "rotate(90deg)" : "none", transition: "transform 120ms" }}
+                />
                 Activity
-              </label>
-              <ul className="space-y-2">
-                {events.map((ev) => (
-                  <li key={ev.id} className="flex items-start gap-2 text-xs" style={{ color: tack.slate }}>
-                    <span
-                      className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
-                      style={{ background: tack.hairline }}
-                      aria-hidden
-                    />
-                    <span className="flex-1 leading-snug">
-                      <span style={{ color: tack.ink }}>{describeEvent(ev, actorName(ev.actor))}</span>
-                      <span className="font-meta"> · {timeAgo(ev.created_at)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              </button>
+              {showActivity && (
+                loadingActivity && events.length === 0 ? (
+                  <p className="text-xs" style={{ color: tack.slate }}>
+                    Loading…
+                  </p>
+                ) : events.length === 0 ? (
+                  <p className="text-xs" style={{ color: tack.slate }}>
+                    No activity yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {events.map((ev) => (
+                      <li key={ev.id} className="flex items-start gap-2 text-xs" style={{ color: tack.slate }}>
+                        <span
+                          className="mt-1.5 h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ background: tack.hairline }}
+                          aria-hidden
+                        />
+                        <span className="flex-1 leading-snug">
+                          <span style={{ color: tack.ink }}>{describeEvent(ev, actorName(ev.actor))}</span>
+                          <span className="font-meta"> · {timeAgo(ev.created_at)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              )}
             </>
           )}
 
