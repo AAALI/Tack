@@ -385,7 +385,7 @@ export default function CardModal({
                     No activity yet.
                   </p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 max-h-44 overflow-y-auto pr-1">
                     {events.map((ev) => (
                       <li key={ev.id} className="flex items-start gap-2 text-xs" style={{ color: tack.slate }}>
                         <span
