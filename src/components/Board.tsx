@@ -205,15 +205,24 @@ export default function Board({
   const pathname = usePathname();
   const sp = useSearchParams();
 
+  // We update the URL with the native History API rather than router.replace().
+  // The board route is a dynamic RSC (it reads auth cookies), so a router
+  // navigation to a new query string refetches the whole page server-side —
+  // re-running every board query (incl. a full `cards` select) and a network
+  // round-trip — just to open a card or flip a filter. Worse, React holds the
+  // transition until that round-trip lands, so the modal couldn't even appear
+  // until the refetch finished. history.replaceState updates the URL (and
+  // useSearchParams still reacts) with zero server work, making these
+  // interactions instant while keeping deep links / shareable card URLs.
   const setParam = useCallback(
     (key: string, value: string | null) => {
       const next = new URLSearchParams(sp.toString());
       if (value == null || value === "") next.delete(key);
       else next.set(key, value);
       const qs = next.toString();
-      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `${pathname}${qs ? `?${qs}` : ""}`);
     },
-    [sp, pathname, router]
+    [sp, pathname]
   );
 
   // Batched clear: each setParam call captures the same stale `sp`, so chaining
@@ -223,9 +232,9 @@ export default function Board({
       const next = new URLSearchParams(sp.toString());
       keys.forEach((k) => next.delete(k));
       const qs = next.toString();
-      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `${pathname}${qs ? `?${qs}` : ""}`);
     },
-    [sp, pathname, router]
+    [sp, pathname]
   );
 
   const cardParam = sp.get("card");
